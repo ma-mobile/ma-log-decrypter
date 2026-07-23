@@ -6,7 +6,7 @@ class FileService {
   /// Pick an encrypted file from the system
   static Future<File?> pickEncryptedFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['txt'],
         dialogTitle: 'Select Encrypted Log File',
@@ -18,6 +18,24 @@ class FileService {
       return null;
     } catch (e) {
       throw Exception('Error picking file: $e');
+    }
+  }
+
+  /// Pick an RSA private key file (PEM)
+  static Future<File?> pickPrivateKeyFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pem', 'key', 'txt'],
+        dialogTitle: 'Select RSA Private Key File',
+      );
+
+      if (result != null && result.files.single.path != null) {
+        return File(result.files.single.path!);
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Error picking private key file: $e');
     }
   }
 
@@ -40,7 +58,7 @@ class FileService {
   }) async {
     try {
       final defaultFileName = suggestedFileName ?? _buildDefaultFileName();
-      final filePath = await FilePicker.platform.saveFile(
+      final filePath = await FilePicker.saveFile(
         dialogTitle: 'Save decrypted log as',
         fileName: defaultFileName,
         type: FileType.custom,

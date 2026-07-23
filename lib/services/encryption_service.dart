@@ -1,17 +1,20 @@
 import 'dart:typed_data';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:crypto/crypto.dart';
+import 'package:pointycastle/asymmetric/api.dart';
 import 'dart:convert';
 
-enum EncryptionMode { aesGcm, aesCbcPkcs7 }
+enum EncryptionMode { aesGcm, aesCbcPkcs7, rsaChunkedBase64 }
 
 extension EncryptionModeLabel on EncryptionMode {
   String get label {
     switch (this) {
       case EncryptionMode.aesGcm:
-        return 'AES-GCM (Recommended)';
+        return 'AES-GCM';
       case EncryptionMode.aesCbcPkcs7:
-        return 'AES-CBC (Legacy)';
+        return 'AES-CBC';
+      case EncryptionMode.rsaChunkedBase64:
+        return 'RSA Chunked Base64';
     }
   }
 }
@@ -19,6 +22,7 @@ extension EncryptionModeLabel on EncryptionMode {
 class EncryptionService {
   static const int _gcmIvLength = 12;
   static const int _cbcIvLength = 16;
+  static const String _rsaChunkDelimiter = '\$?';
 
   /// Derive a key from password using SHA256
   static Uint8List deriveKey(String password) {
@@ -35,7 +39,46 @@ class EncryptionService {
         return _decryptAesGcm(encryptedData, password);
       case EncryptionMode.aesCbcPkcs7:
         return _decryptAesCbc(encryptedData, password);
+      case EncryptionMode.rsaChunkedBase64:
+        throw Exception(
+          'RSA mode requires a private key. Use decryptRsaChunkedData().',
+        );
     }
+  }
+
+  static Uint8List decryptRsaChunkedData(
+    Uint8List encryptedData,
+    String privateKeyPem,
+  ) {
+    final encryptedText = utf8.decode(encryptedData, allowMalformed: true);
+    final chunks = encryptedText
+        .split(_rsaChunkDelimiter)
+        .map((chunk) => chunk.trim())
+        .where((chunk) => chunk.isNotEmpty)
+        .toList();
+
+    if (chunks.isEmpty) {
+      throw Exception('Invalid RSA chunked data: no encrypted chunks found');
+    }
+
+    final parser = encrypt.RSAKeyParser();
+    final parsedKey = parser.parse(privateKeyPem);
+    if (parsedKey is! RSAPrivateKey) {
+      throw Exception(
+        'Selected key is not an RSA private key. Please select the matching private_key.pem.',
+      );
+    }
+
+    final encrypter = encrypt.Encrypter(
+      encrypt.RSA(privateKey: parsedKey),
+    );
+
+    final buffer = StringBuffer();
+    for (final chunk in chunks) {
+      buffer.write(encrypter.decrypt64(chunk));
+    }
+
+    return Uint8List.fromList(utf8.encode(buffer.toString()));
   }
 
   static Uint8List _decryptAesGcm(Uint8List encryptedData, String password) {
@@ -93,6 +136,8 @@ class EncryptionService {
         return _encryptAesGcm(plainData, password);
       case EncryptionMode.aesCbcPkcs7:
         return _encryptAesCbc(plainData, password);
+      case EncryptionMode.rsaChunkedBase64:
+        throw Exception('RSA chunked encryption is not supported in this tool.');
     }
   }
 

@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/encryption_service.dart';
 import '../services/file_service.dart';
 
 class AppState extends ChangeNotifier {
+  static const String _bundledRsaPrivateKeyPath =
+      'keys/private_key_decrypted.pem';
   File? _selectedFile;
+  File? _privateKeyFile;
   String _password = '';
   EncryptionMode _encryptionMode = EncryptionMode.aesGcm;
   String _decryptedContent = '';
@@ -15,6 +19,7 @@ class AppState extends ChangeNotifier {
 
   // Getters
   File? get selectedFile => _selectedFile;
+  File? get privateKeyFile => _privateKeyFile;
   String get password => _password.trim();
   EncryptionMode get encryptionMode => _encryptionMode;
   String get decryptedContent => _decryptedContent;
@@ -58,6 +63,27 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Select RSA private key file (PEM)
+  Future<void> selectPrivateKeyFile() async {
+    try {
+      _errorMessage = '';
+      _status = 'Selecting private key...';
+      notifyListeners();
+
+      final file = await FileService.pickPrivateKeyFile();
+      if (file != null) {
+        _privateKeyFile = file;
+        _status = 'Private key selected: ${FileService.getFileName(file.path)}';
+      } else {
+        _status = '';
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = '';
+    }
+    notifyListeners();
+  }
+
   /// Decrypt the selected file
   Future<void> decryptFile() async {
     if (_selectedFile == null) {
@@ -66,10 +92,12 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    if (_password.isEmpty) {
-      _errorMessage = 'Please enter a password';
-      notifyListeners();
-      return;
+    if (_encryptionMode != EncryptionMode.rsaChunkedBase64) {
+      if (_password.isEmpty) {
+        _errorMessage = 'Please enter a password';
+        notifyListeners();
+        return;
+      }
     }
 
     try {
@@ -82,12 +110,20 @@ class AppState extends ChangeNotifier {
       final encryptedBytes = await FileService.readFileAsBytes(_selectedFile!);
 
       // Decrypt
-      final decryptedBytes =
-          EncryptionService.decryptData(
-            encryptedBytes,
-            _password,
-            _encryptionMode,
-          );
+      late final Uint8List decryptedBytes;
+      if (_encryptionMode == EncryptionMode.rsaChunkedBase64) {
+        final privateKeyPem = await _resolveRsaPrivateKeyPem();
+        decryptedBytes = EncryptionService.decryptRsaChunkedData(
+          encryptedBytes,
+          privateKeyPem,
+        );
+      } else {
+        decryptedBytes = EncryptionService.decryptData(
+          encryptedBytes,
+          _password,
+          _encryptionMode,
+        );
+      }
 
       // Convert to string
       _decryptedContent = utf8.decode(decryptedBytes);
@@ -101,6 +137,21 @@ class AppState extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<String> _resolveRsaPrivateKeyPem() async {
+    if (_privateKeyFile != null) {
+      return _privateKeyFile!.readAsString();
+    }
+
+    try {
+      return await rootBundle.loadString(_bundledRsaPrivateKeyPath);
+    } catch (e) {
+      throw Exception(
+        'Bundled RSA private key not found at $_bundledRsaPrivateKeyPath. '
+        'Select a private key file manually. ($e)',
+      );
     }
   }
 
@@ -135,6 +186,7 @@ class AppState extends ChangeNotifier {
   /// Clear all
   void reset() {
     _selectedFile = null;
+    _privateKeyFile = null;
     _password = '';
     _decryptedContent = '';
     _status = '';

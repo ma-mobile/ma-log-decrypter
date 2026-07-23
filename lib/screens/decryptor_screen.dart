@@ -57,7 +57,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                 _buildFileSection(context, appState),
                 const SizedBox(height: 32),
 
-                // Password Section
+                // Decryption details section
                 _buildPasswordSection(appState),
                 const SizedBox(height: 24),
 
@@ -141,6 +141,8 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
   }
 
   Widget _buildPasswordSection(AppState appState) {
+    final isRsaMode = appState.encryptionMode == EncryptionMode.rsaChunkedBase64;
+
     return Card(
       elevation: 1,
       child: Padding(
@@ -149,38 +151,8 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Step 2: Enter Decryption Password',
+              'Step 2: Provide Decryption Details',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: _obscurePassword,
-              decoration: InputDecoration(
-                hintText: 'Enter password',
-                prefixIcon: const Icon(Icons.lock),
-                suffixIcon: IconButton(
-                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-              onChanged: (value) {
-                appState.updatePassword(value);
-              },
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<EncryptionMode>(
@@ -209,14 +181,78 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                 }
               },
             ),
+            const SizedBox(height: 12),
+            if (!isRsaMode)
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  hintText: 'Enter password',
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                onChanged: (value) {
+                  appState.updatePassword(value);
+                },
+              ),
+            if (isRsaMode) _buildRsaKeySection(appState),
             const SizedBox(height: 8),
-            const Text(
-              'Password is case-sensitive. Select the same mode used during encryption.',
-              style: TextStyle(fontSize: 12, color: _textGreen),
+            Text(
+              isRsaMode
+                  ? 'RSA mode uses bundled key: keys/private_key_decrypted.pem (you can override by selecting another key).'
+                  : 'Password is case-sensitive. Select the same mode used during encryption.',
+              style: const TextStyle(fontSize: 12, color: _textGreen),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRsaKeySection(AppState appState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (appState.privateKeyFile != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              children: [
+                const Icon(Icons.vpn_key, color: _midGreen, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    appState.privateKeyFile!.path,
+                    style: const TextStyle(color: _midGreen),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ElevatedButton.icon(
+          onPressed: () => appState.selectPrivateKeyFile(),
+          icon: const Icon(Icons.key),
+          label: const Text('Select Private Key (.pem)'),
+        ),
+      ],
     );
   }
 
