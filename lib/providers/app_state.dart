@@ -195,6 +195,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clear only selected file and current decryption result
+  void clearSelectedFile() {
+    _selectedFile = null;
+    _decryptedContent = '';
+    _status = '';
+    _errorMessage = '';
+    notifyListeners();
+  }
+
   /// Clear decrypted content and status
   void clearDecryption() {
     _decryptedContent = '';

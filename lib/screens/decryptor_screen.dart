@@ -226,7 +226,8 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                 if (appState.selectedFile != null)
                   OutlinedButton.icon(
                     onPressed: () {
-                      appState.clearDecryption();
+                      appState.clearSelectedFile();
+                      appState.updatePassword('');
                       _passwordController.clear();
                     },
                     icon: const Icon(Icons.restart_alt),
