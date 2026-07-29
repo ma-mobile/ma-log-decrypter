@@ -12,11 +12,6 @@ class DecryptorScreen extends StatefulWidget {
 }
 
 class _DecryptorScreenState extends State<DecryptorScreen> {
-  static const Color _primaryGreen = Color(0xFF0D530E);
-  static const Color _softGreen = Color(0xFFE8F5E9);
-  static const Color _lightGreen = Color(0xFFC8E6C9);
-  static const Color _midGreen = Color(0xFF2E7D32);
-  static const Color _textGreen = Color(0xFF1B5E20);
   late TextEditingController _passwordController;
   late TextEditingController _decryptedContentController;
   bool _obscurePassword = true;
@@ -37,100 +32,205 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Log File Decryptor'),
-        elevation: 0,
-        centerTitle: true,
+        title: const Text(
+          'Log File Decryptor',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
-      body: Consumer<AppState>(
-        builder: (context, appState, _) {
-          // Update text controllers when content changes
-          _decryptedContentController.text = appState.decryptedContent;
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.primary.withValues(alpha: 0.06),
+              colorScheme.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Consumer<AppState>(
+            builder: (context, appState, _) {
+              _decryptedContentController.text = appState.decryptedContent;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // File Selection Section
-                _buildFileSection(context, appState),
-                const SizedBox(height: 32),
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  final isWide = width >= 1040;
+                  final horizontalPadding = width >= 1200 ? 32.0 : 18.0;
 
-                // Decryption details section
-                _buildPasswordSection(appState),
-                const SizedBox(height: 24),
-
-                // Buttons Section
-                _buildButtonsSection(context, appState),
-                const SizedBox(height: 24),
-
-                // Status/Error Section
-                if (appState.status.isNotEmpty || appState.errorMessage.isNotEmpty)
-                  _buildStatusSection(appState),
-
-                const SizedBox(height: 24),
-
-                // Decrypted Content Section
-                if (appState.decryptedContent.isNotEmpty)
-                  _buildContentSection(appState),
-              ],
-            ),
-          );
-        },
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      18,
+                      horizontalPadding,
+                      24,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1240),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeaderCard(context),
+                            const SizedBox(height: 18),
+                            if (isWide)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 5,
+                                    child: _buildControlPanel(context, appState),
+                                  ),
+                                  const SizedBox(width: 18),
+                                  Expanded(
+                                    flex: 6,
+                                    child: _buildContentCard(context, appState),
+                                  ),
+                                ],
+                              )
+                            else
+                              Column(
+                                children: [
+                                  _buildControlPanel(context, appState),
+                                  const SizedBox(height: 18),
+                                  _buildContentCard(context, appState),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildFileSection(BuildContext context, AppState appState) {
+  Widget _buildHeaderCard(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
-      elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.shield_rounded, color: colorScheme.primary),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Decrypt encrypted log files securely',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Supports AES and RSA chunked formats with desktop-friendly controls.',
+                    style: TextStyle(fontSize: 12.5),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildControlPanel(BuildContext context, AppState appState) {
+    return Column(
+      children: [
+        _buildFileSection(context, appState),
+        const SizedBox(height: 14),
+        _buildPasswordSection(context, appState),
+        const SizedBox(height: 14),
+        _buildButtonsSection(context, appState),
+        if (appState.status.isNotEmpty || appState.errorMessage.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _buildStatusSection(context, appState),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFileSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Step 1: Select Encrypted File',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              'Step 1 · Select encrypted file',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
-            if (appState.selectedFile != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle, color: _midGreen, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        appState.selectedFile!.path,
-                        style: const TextStyle(color: _midGreen),
-                        overflow: TextOverflow.ellipsis,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    appState.selectedFile == null ? Icons.insert_drive_file_outlined : Icons.check_circle,
+                    size: 18,
+                    color: appState.selectedFile == null ? colorScheme.outline : colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      appState.selectedFile?.path ?? 'No file selected',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: appState.selectedFile == null ? colorScheme.outline : colorScheme.onSurface,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            Row(
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                ElevatedButton.icon(
+                FilledButton.icon(
                   onPressed: () => appState.selectFile(),
                   icon: const Icon(Icons.folder_open),
                   label: const Text('Browse File'),
                 ),
-                const SizedBox(width: 12),
                 if (appState.selectedFile != null)
-                  ElevatedButton(
+                  OutlinedButton.icon(
                     onPressed: () {
                       appState.clearDecryption();
                       _passwordController.clear();
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryGreen,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Clear Selection'),
+                    icon: const Icon(Icons.restart_alt),
+                    label: const Text('Clear Selection'),
                   ),
               ],
             ),
@@ -140,33 +240,23 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildPasswordSection(AppState appState) {
+  Widget _buildPasswordSection(BuildContext context, AppState appState) {
     final isRsaMode = appState.encryptionMode == EncryptionMode.rsaChunkedBase64;
 
     return Card(
-      elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Step 2: Provide Decryption Details',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              'Step 2 · Provide decryption details',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<EncryptionMode>(
               initialValue: appState.encryptionMode,
-              decoration: InputDecoration(
-                labelText: 'Encryption mode',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
+              decoration: const InputDecoration(labelText: 'Encryption mode'),
               items: EncryptionMode.values
                   .map(
                     (mode) => DropdownMenuItem<EncryptionMode>(
@@ -187,8 +277,9 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
+                  labelText: 'Password',
                   hintText: 'Enter password',
-                  prefixIcon: const Icon(Icons.lock),
+                  prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                     icon: Icon(
@@ -200,13 +291,6 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                       });
                     },
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
                 ),
                 onChanged: (value) {
                   appState.updatePassword(value);
@@ -216,9 +300,9 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
             const SizedBox(height: 8),
             Text(
               isRsaMode
-                  ? 'RSA mode uses bundled key: keys/private_key_decrypted.pem (you can override by selecting another key).'
-                  : 'Password is case-sensitive. Select the same mode used during encryption.',
-              style: const TextStyle(fontSize: 12, color: _textGreen),
+                  ? 'RSA mode uses the bundled private key by default. You can choose a .pem key manually.'
+                  : 'Password is case-sensitive. Make sure mode matches how the file was encrypted.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
@@ -232,22 +316,22 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
       children: [
         if (appState.privateKeyFile != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                const Icon(Icons.vpn_key, color: _midGreen, size: 20),
+                const Icon(Icons.vpn_key, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     appState.privateKeyFile!.path,
-                    style: const TextStyle(color: _midGreen),
+                    style: const TextStyle(fontSize: 12.5),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-        ElevatedButton.icon(
+        OutlinedButton.icon(
           onPressed: () => appState.selectPrivateKeyFile(),
           icon: const Icon(Icons.key),
           label: const Text('Select Private Key (.pem)'),
@@ -257,38 +341,33 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
   }
 
   Widget _buildButtonsSection(BuildContext context, AppState appState) {
-    return Row(
-      children: [
-        ElevatedButton.icon(
-          onPressed: appState.isLoading || appState.selectedFile == null
-              ? null
-              : () => appState.decryptFile(),
-          icon: const Icon(Icons.lock_open),
-          label: const Text('Decrypt'),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-        ),
-        const SizedBox(width: 12),
-        if (appState.hasDecryptedContent)
-          ElevatedButton.icon(
-            onPressed: appState.isLoading
-                ? null
-                : () => _handleSaveAs(context, appState),
-            icon: const Icon(Icons.save),
-            label: const Text('Save As'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            FilledButton.icon(
+              onPressed: appState.isLoading || appState.selectedFile == null
+                  ? null
+                  : () => appState.decryptFile(),
+              icon: const Icon(Icons.lock_open_rounded),
+              label: const Text('Decrypt'),
             ),
-          ),
-        const SizedBox(width: 12),
-        if (appState.isLoading)
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-      ],
+            if (appState.hasDecryptedContent)
+              OutlinedButton.icon(
+                onPressed: appState.isLoading
+                    ? null
+                    : () => _handleSaveAs(context, appState),
+                icon: const Icon(Icons.save_alt_rounded),
+                label: const Text('Save As'),
+              ),
+            if (appState.isLoading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -372,73 +451,102 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     await appState.saveDecryptedContent(suggestedFileName: suggestedFileName);
   }
 
-  Widget _buildStatusSection(AppState appState) {
+  Widget _buildStatusSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isError = appState.errorMessage.isNotEmpty;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isError ? Colors.red.shade50 : _softGreen,
-        border: Border.all(
-          color: isError ? Colors.red.shade200 : _lightGreen,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isError ? Icons.error_outline : Icons.info_outline,
-            color: isError ? Colors.red : _primaryGreen,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              isError ? appState.errorMessage : appState.status,
-              style: TextStyle(
-                color: isError ? Colors.red : _textGreen,
+    return Card(
+      color: isError
+          ? Color.alphaBlend(Colors.red.withValues(alpha: 0.08), colorScheme.surface)
+          : Color.alphaBlend(
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.surface,
+            ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.info_outline,
+              color: isError ? Colors.red.shade700 : colorScheme.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isError ? appState.errorMessage : appState.status,
+                style: TextStyle(
+                  color: isError ? Colors.red.shade800 : colorScheme.onSurface,
+                  fontSize: 12.8,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildContentSection(AppState appState) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Decrypted Content',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          height: 400,
-          decoration: BoxDecoration(
-            border: Border.all(color: _lightGreen),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: TextField(
-            controller: _decryptedContentController,
-            readOnly: true,
-            maxLines: null,
-            expands: true,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(12),
-              hintText: 'Decrypted content will appear here',
-              hintStyle: const TextStyle(color: Color.fromARGB(140, 46, 125, 50)),
+  Widget _buildContentCard(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final viewportHeight = MediaQuery.of(context).size.height;
+    final contentHeight = viewportHeight < 760 ? 300.0 : 430.0;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Decrypted Content',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: Text(
+                    '${appState.decryptedContent.length} chars',
+                    style: TextStyle(
+                      color: colorScheme.primary,
+                      fontSize: 11.8,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-          ),
+            const SizedBox(height: 12),
+            Container(
+              height: contentHeight,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.outlineVariant),
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
+              ),
+              child: TextField(
+                controller: _decryptedContentController,
+                readOnly: true,
+                maxLines: null,
+                expands: true,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(12),
+                  hintText: 'Decrypted content will appear here',
+                  hintStyle: TextStyle(color: colorScheme.outline),
+                ),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12.5),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          '${appState.decryptedContent.length} characters',
-          style: const TextStyle(fontSize: 12, color: _midGreen),
-        ),
-      ],
+      ),
     );
   }
 }

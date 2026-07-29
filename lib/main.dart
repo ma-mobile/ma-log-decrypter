@@ -15,27 +15,62 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  static const Color _primaryGreen = Color(0xFF0D530E);
+  static const Color _primaryGreen = Color(0xFF0F5D55);
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: _primaryGreen,
+      brightness: Brightness.light,
+    );
+
     return MaterialApp(
       title: 'Log File Decryptor',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: _primaryGreen,
-          primary: _primaryGreen,
+        colorScheme: colorScheme,
+        scaffoldBackgroundColor: const Color(0xFFF4F8F8),
+        appBarTheme: AppBarTheme(
+          backgroundColor: colorScheme.surface,
+          foregroundColor: colorScheme.onSurface,
+          elevation: 0,
+          centerTitle: false,
         ),
-        scaffoldBackgroundColor: const Color(0xFFF1F8F1),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: _primaryGreen,
-          foregroundColor: Colors.white,
+        cardTheme: CardThemeData(
+          elevation: 0,
+          color: colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: colorScheme.outlineVariant),
+          ),
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _primaryGreen,
-            foregroundColor: Colors.white,
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+        elevatedButtonTheme: const ElevatedButtonThemeData(
+          style: ButtonStyle(
+            padding: WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            ),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+            ),
           ),
         ),
       ),
