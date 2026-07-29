@@ -1,4 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -11,9 +12,15 @@ class DecryptorScreen extends StatefulWidget {
   State<DecryptorScreen> createState() => _DecryptorScreenState();
 }
 
-class _DecryptorScreenState extends State<DecryptorScreen> {
+class _DecryptorScreenState extends State<DecryptorScreen>
+    with SingleTickerProviderStateMixin {
   late TextEditingController _passwordController;
   late TextEditingController _decryptedContentController;
+  late AnimationController _partyController;
+  final Random _random = Random();
+  List<_PartyParticle> _partyParticles = [];
+  int _footerTapCount = 0;
+  DateTime? _lastFooterTapAt;
   bool _obscurePassword = true;
 
   @override
@@ -21,10 +28,21 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     super.initState();
     _passwordController = TextEditingController();
     _decryptedContentController = TextEditingController();
+    _partyController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          setState(() {
+            _partyParticles = [];
+          });
+        }
+      });
   }
 
   @override
   void dispose() {
+    _partyController.dispose();
     _passwordController.dispose();
     _decryptedContentController.dispose();
     super.dispose();
@@ -41,78 +59,98 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.primary.withValues(alpha: 0.06),
-              colorScheme.surface,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Consumer<AppState>(
-            builder: (context, appState, _) {
-              _decryptedContentController.text = appState.decryptedContent;
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  colorScheme.primary.withValues(alpha: 0.06),
+                  colorScheme.surface,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: Consumer<AppState>(
+                builder: (context, appState, _) {
+                  _decryptedContentController.text = appState.decryptedContent;
 
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-                  final isWide = width >= 1040;
-                  final horizontalPadding = width >= 1200 ? 32.0 : 18.0;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      final isWide = width >= 1040;
+                      final horizontalPadding = width >= 1200 ? 32.0 : 18.0;
 
-                  return SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      horizontalPadding,
-                      18,
-                      horizontalPadding,
-                      24,
-                    ),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1240),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeaderCard(context),
-                            const SizedBox(height: 18),
-                            if (isWide)
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 5,
-                                    child: _buildControlPanel(context, appState),
-                                  ),
-                                  const SizedBox(width: 18),
-                                  Expanded(
-                                    flex: 6,
-                                    child: _buildContentCard(context, appState),
-                                  ),
-                                ],
-                              )
-                            else
-                              Column(
-                                children: [
-                                  _buildControlPanel(context, appState),
-                                  const SizedBox(height: 18),
-                                  _buildContentCard(context, appState),
-                                ],
-                              ),
-                            const SizedBox(height: 100),
-                            _buildFooter(context),
-                          ],
+                      return SingleChildScrollView(
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          18,
+                          horizontalPadding,
+                          24,
                         ),
-                      ),
-                    ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1240),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildHeaderCard(context),
+                                const SizedBox(height: 18),
+                                if (isWide)
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 5,
+                                        child: _buildControlPanel(context, appState),
+                                      ),
+                                      const SizedBox(width: 18),
+                                      Expanded(
+                                        flex: 6,
+                                        child: _buildContentCard(context, appState),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  Column(
+                                    children: [
+                                      _buildControlPanel(context, appState),
+                                      const SizedBox(height: 18),
+                                      _buildContentCard(context, appState),
+                                    ],
+                                  ),
+                                const SizedBox(height: 100),
+                                _buildFooter(context),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
-              );
-            },
+              ),
+            ),
           ),
-        ),
+          if (_partyParticles.isNotEmpty)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _partyController,
+                  builder: (context, _) {
+                    return CustomPaint(
+                      painter: _PartyPopPainter(
+                        progress: _partyController.value,
+                        particles: _partyParticles,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -154,6 +192,51 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
         ),
       ),
     );
+  }
+
+  void _onFooterIconTap() {
+    final now = DateTime.now();
+    if (_lastFooterTapAt == null ||
+        now.difference(_lastFooterTapAt!) > const Duration(seconds: 2)) {
+      _footerTapCount = 1;
+    } else {
+      _footerTapCount += 1;
+    }
+    _lastFooterTapAt = now;
+
+    if (_footerTapCount >= 3) {
+      _footerTapCount = 0;
+      _launchPartyPop();
+    }
+  }
+
+  void _launchPartyPop() {
+    final colors = <Color>[
+      const Color(0xFF0F5D55),
+      const Color(0xFF1B8A5A),
+      const Color(0xFF42B883),
+      const Color(0xFF6BCB77),
+      const Color(0xFF8FD694),
+    ];
+
+    setState(() {
+      _partyParticles = List.generate(52, (index) {
+        final horizontalSpread = (_random.nextDouble() - 0.5) * 300;
+        final velocityX = (_random.nextDouble() - 0.5) * 190;
+        final velocityY = -260 - _random.nextDouble() * 260;
+        final size = 3 + _random.nextDouble() * 4.8;
+        final color = colors[_random.nextInt(colors.length)];
+        return _PartyParticle(
+          horizontalSpread: horizontalSpread,
+          velocityX: velocityX,
+          velocityY: velocityY,
+          size: size,
+          color: color,
+        );
+      });
+    });
+
+    _partyController.forward(from: 0);
   }
 
   Widget _buildControlPanel(BuildContext context, AppState appState) {
@@ -559,16 +642,19 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     return Center(
       child: Column(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/app_icon.png',
-              width: 58,
-              height: 58,
-              fit: BoxFit.cover,
+          GestureDetector(
+            onTap: _onFooterIconTap,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/app_icon.png',
+                width: 58,
+                height: 58,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
+         /* const SizedBox(height: 8),
           Text(
             'Developed and designed by mobile team',
             style: TextStyle(
@@ -577,9 +663,57 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
               color: colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
-          ),
+          ),*/
         ],
       ),
     );
+  }
+}
+
+class _PartyParticle {
+  const _PartyParticle({
+    required this.horizontalSpread,
+    required this.velocityX,
+    required this.velocityY,
+    required this.size,
+    required this.color,
+  });
+
+  final double horizontalSpread;
+  final double velocityX;
+  final double velocityY;
+  final double size;
+  final Color color;
+}
+
+class _PartyPopPainter extends CustomPainter {
+  const _PartyPopPainter({
+    required this.progress,
+    required this.particles,
+  });
+
+  final double progress;
+  final List<_PartyParticle> particles;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = Curves.easeOut.transform(progress.clamp(0.0, 1.0));
+    const gravity = 520.0;
+    final centerX = size.width / 2;
+    final baseY = size.height - 86;
+
+    for (final particle in particles) {
+      final dx = centerX + particle.horizontalSpread + (particle.velocityX * t);
+      final dy = baseY + (particle.velocityY * t) + (0.5 * gravity * t * t);
+      final alpha = ((1.0 - t) * 255).clamp(0.0, 255.0).toInt();
+      final paint = Paint()..color = particle.color.withAlpha(alpha);
+      canvas.drawCircle(Offset(dx, dy), particle.size, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PartyPopPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.particles != particles;
   }
 }
