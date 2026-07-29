@@ -101,6 +101,8 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                                   _buildContentCard(context, appState),
                                 ],
                               ),
+                            const SizedBox(height: 100),
+                            _buildFooter(context),
                           ],
                         ),
                       ),
@@ -547,6 +549,36 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFooter(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/app_icon.png',
+              width: 58,
+              height: 58,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Developed and designed by mobile team',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

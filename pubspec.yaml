@@ -74,6 +74,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/app_icon.png
     - keys/private_key_decrypted.pem
 
   # An image asset can refer to one or more resolution-specific "variants", see
