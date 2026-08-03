@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/encryption_service.dart';
 
+enum _ToolMode { decryptor, databaseViewer }
+
 class DecryptorScreen extends StatefulWidget {
   const DecryptorScreen({super.key});
 
@@ -16,28 +18,37 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     with SingleTickerProviderStateMixin {
   late TextEditingController _passwordController;
   late TextEditingController _decryptedContentController;
+  late TextEditingController _dbTableSearchController;
+  late ScrollController _dbHorizontalScrollController;
+  late ScrollController _dbVerticalScrollController;
   late AnimationController _partyController;
   final Random _random = Random();
   List<_PartyParticle> _partyParticles = [];
   int _footerTapCount = 0;
   DateTime? _lastFooterTapAt;
   bool _obscurePassword = true;
+  _ToolMode _selectedMode = _ToolMode.decryptor;
+  bool _isDbTableViewExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _passwordController = TextEditingController();
     _decryptedContentController = TextEditingController();
-    _partyController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1300),
-    )..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          setState(() {
-            _partyParticles = [];
-          });
-        }
-      });
+    _dbTableSearchController = TextEditingController();
+    _dbHorizontalScrollController = ScrollController();
+    _dbVerticalScrollController = ScrollController();
+    _partyController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 1300),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            setState(() {
+              _partyParticles = [];
+            });
+          }
+        });
   }
 
   @override
@@ -45,6 +56,9 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     _partyController.dispose();
     _passwordController.dispose();
     _decryptedContentController.dispose();
+    _dbTableSearchController.dispose();
+    _dbHorizontalScrollController.dispose();
+    _dbVerticalScrollController.dispose();
     super.dispose();
   }
 
@@ -75,7 +89,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
             child: SafeArea(
               child: Consumer<AppState>(
                 builder: (context, appState, _) {
-                  _decryptedContentController.text = appState.decryptedContent;
+                  if (_selectedMode == _ToolMode.decryptor) {
+                    _decryptedContentController.text =
+                        appState.decryptedContent;
+                  }
 
                   return LayoutBuilder(
                     builder: (context, constraints) {
@@ -98,27 +115,72 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                               children: [
                                 _buildHeaderCard(context),
                                 const SizedBox(height: 18),
-                                if (isWide)
+                                _buildModeMenu(context),
+                                const SizedBox(height: 18),
+                                if (_selectedMode == _ToolMode.decryptor &&
+                                    isWide)
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
                                         flex: 5,
-                                        child: _buildControlPanel(context, appState),
+                                        child: _buildControlPanel(
+                                          context,
+                                          appState,
+                                        ),
                                       ),
                                       const SizedBox(width: 18),
                                       Expanded(
                                         flex: 6,
-                                        child: _buildContentCard(context, appState),
+                                        child: _buildContentCard(
+                                          context,
+                                          appState,
+                                        ),
                                       ),
                                     ],
                                   )
-                                else
+                                else if (_selectedMode == _ToolMode.decryptor)
                                   Column(
                                     children: [
                                       _buildControlPanel(context, appState),
                                       const SizedBox(height: 18),
                                       _buildContentCard(context, appState),
+                                    ],
+                                  ),
+                                if (_selectedMode == _ToolMode.databaseViewer &&
+                                    isWide)
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 4,
+                                        child: _buildDbViewerPanel(
+                                          context,
+                                          appState,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 18),
+                                      Expanded(
+                                        flex: 7,
+                                        child: _buildDbTableContentCard(
+                                          context,
+                                          appState,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                else if (_selectedMode ==
+                                    _ToolMode.databaseViewer)
+                                  Column(
+                                    children: [
+                                      _buildDbViewerPanel(context, appState),
+                                      const SizedBox(height: 18),
+                                      _buildDbTableContentCard(
+                                        context,
+                                        appState,
+                                      ),
                                     ],
                                   ),
                                 const SizedBox(height: 100),
@@ -177,18 +239,46 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Decrypt encrypted log files securely',
+                    'Decrypt logs or inspect SQLite databases',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                   SizedBox(height: 3),
                   Text(
-                    'Supports AES and RSA chunked formats with desktop-friendly controls.',
+                    'Use the menu below to switch between decryption and DB table viewing.',
                     style: TextStyle(fontSize: 12.5),
                   ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeMenu(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: SegmentedButton<_ToolMode>(
+          segments: const [
+            ButtonSegment<_ToolMode>(
+              value: _ToolMode.decryptor,
+              icon: Icon(Icons.lock_open_rounded),
+              label: Text('Decrypt Logs'),
+            ),
+            ButtonSegment<_ToolMode>(
+              value: _ToolMode.databaseViewer,
+              icon: Icon(Icons.table_view_rounded),
+              label: Text('DB Viewer'),
+            ),
+          ],
+          selected: {_selectedMode},
+          onSelectionChanged: (selectedModes) {
+            setState(() {
+              _selectedMode = selectedModes.first;
+            });
+          },
         ),
       ),
     );
@@ -255,6 +345,258 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     );
   }
 
+  Widget _buildDbViewerPanel(BuildContext context, AppState appState) {
+    return Column(
+      children: [
+        _buildDbFileSection(context, appState),
+        const SizedBox(height: 14),
+        _buildDbTableListSection(context, appState),
+        if (appState.dbStatus.isNotEmpty ||
+            appState.dbErrorMessage.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _buildDbStatusSection(context, appState),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDbFileSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Step 1 · Upload database file',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.35,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    appState.selectedDbFile == null
+                        ? Icons.storage_outlined
+                        : Icons.check_circle,
+                    size: 18,
+                    color: appState.selectedDbFile == null
+                        ? colorScheme.outline
+                        : colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      appState.selectedDbFile?.path ?? 'No .db file selected',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: appState.selectedDbFile == null
+                            ? colorScheme.outline
+                            : colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: appState.isDbLoading
+                      ? null
+                      : () => appState.selectDatabaseFile(),
+                  icon: const Icon(Icons.upload_file_rounded),
+                  label: const Text('Upload .db File'),
+                ),
+                if (appState.selectedDbFile != null)
+                  OutlinedButton.icon(
+                    onPressed: appState.isDbLoading
+                        ? null
+                        : () => appState.clearDatabaseSelection(),
+                    icon: const Icon(Icons.restart_alt),
+                    label: const Text('Clear DB Selection'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDbTableListSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final filteredTables = appState.filteredDbTables;
+    if (_dbTableSearchController.text != appState.dbTableSearchQuery) {
+      _dbTableSearchController.value = TextEditingValue(
+        text: appState.dbTableSearchQuery,
+        selection: TextSelection.collapsed(
+          offset: appState.dbTableSearchQuery.length,
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Step 2 · Choose table',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _dbTableSearchController,
+              onChanged: appState.updateDbTableSearchQuery,
+              decoration: InputDecoration(
+                labelText: 'Search table name',
+                hintText: 'Type to filter tables',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: appState.dbTableSearchQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _dbTableSearchController.clear();
+                          appState.updateDbTableSearchQuery('');
+                        },
+                      ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (appState.dbTables.isEmpty)
+              Text(
+                'Upload a database file to view available tables.',
+                style: TextStyle(color: colorScheme.outline),
+              )
+            else if (filteredTables.isEmpty)
+              Text(
+                'No tables found for "${appState.dbTableSearchQuery}".',
+                style: TextStyle(color: colorScheme.outline),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: filteredTables.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final tableName = filteredTables[index];
+                    final isSelected = appState.selectedDbTable == tableName;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: appState.isDbLoading
+                          ? null
+                          : () => appState.selectDatabaseTable(tableName),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colorScheme.primary.withValues(alpha: 0.12)
+                              : colorScheme.surfaceContainerHighest.withValues(
+                                  alpha: 0.2,
+                                ),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.table_rows_rounded,
+                              size: 16,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                tableName,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDbStatusSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isError = appState.dbErrorMessage.isNotEmpty;
+
+    return Card(
+      color: isError
+          ? Color.alphaBlend(
+              Colors.red.withValues(alpha: 0.08),
+              colorScheme.surface,
+            )
+          : Color.alphaBlend(
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.surface,
+            ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.info_outline,
+              color: isError ? Colors.red.shade700 : colorScheme.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isError ? appState.dbErrorMessage : appState.dbStatus,
+                style: TextStyle(
+                  color: isError ? Colors.red.shade800 : colorScheme.onSurface,
+                  fontSize: 12.8,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFileSection(BuildContext context, AppState appState) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -273,16 +615,22 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.35,
+                ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colorScheme.outlineVariant),
               ),
               child: Row(
                 children: [
                   Icon(
-                    appState.selectedFile == null ? Icons.insert_drive_file_outlined : Icons.check_circle,
+                    appState.selectedFile == null
+                        ? Icons.insert_drive_file_outlined
+                        : Icons.check_circle,
                     size: 18,
-                    color: appState.selectedFile == null ? colorScheme.outline : colorScheme.primary,
+                    color: appState.selectedFile == null
+                        ? colorScheme.outline
+                        : colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -291,7 +639,9 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12.5,
-                        color: appState.selectedFile == null ? colorScheme.outline : colorScheme.onSurface,
+                        color: appState.selectedFile == null
+                            ? colorScheme.outline
+                            : colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -327,7 +677,8 @@ class _DecryptorScreenState extends State<DecryptorScreen>
   }
 
   Widget _buildPasswordSection(BuildContext context, AppState appState) {
-    final isRsaMode = appState.encryptionMode == EncryptionMode.rsaChunkedBase64;
+    final isRsaMode =
+        appState.encryptionMode == EncryptionMode.rsaChunkedBase64;
 
     return Card(
       child: Padding(
@@ -367,9 +718,13 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                   hintText: 'Enter password',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                    tooltip: _obscurePassword
+                        ? 'Show password'
+                        : 'Hide password',
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -450,7 +805,12 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 icon: const Icon(Icons.save_alt_rounded),
                 label: const Text('Save As'),
               ),
-            if (appState.isLoading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+            if (appState.isLoading)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
           ],
         ),
       ),
@@ -491,7 +851,8 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     final currentContext = this.context;
     String? suggestedFileName;
     if (choice == 'app') {
-      suggestedFileName = 'decrypted_log_${DateTime.now().millisecondsSinceEpoch}.txt';
+      suggestedFileName =
+          'decrypted_log_${DateTime.now().millisecondsSinceEpoch}.txt';
     } else if (choice == 'custom') {
       final controller = TextEditingController(
         text: 'decrypted_log_${DateTime.now().millisecondsSinceEpoch}.txt',
@@ -543,7 +904,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       color: isError
-          ? Color.alphaBlend(Colors.red.withValues(alpha: 0.08), colorScheme.surface)
+          ? Color.alphaBlend(
+              Colors.red.withValues(alpha: 0.08),
+              colorScheme.surface,
+            )
           : Color.alphaBlend(
               colorScheme.primary.withValues(alpha: 0.08),
               colorScheme.surface,
@@ -592,7 +956,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.primary.withValues(alpha: 0.09),
                     borderRadius: BorderRadius.circular(50),
@@ -614,7 +981,9 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colorScheme.outlineVariant),
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.18,
+                ),
               ),
               child: TextField(
                 controller: _decryptedContentController,
@@ -636,9 +1005,177 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     );
   }
 
-  Widget _buildFooter(BuildContext context) {
+  Widget _buildDbTableContentCard(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasTableSelection = appState.selectedDbTable != null;
+    final hasColumns = appState.dbColumns.isNotEmpty;
+    final viewportHeight = MediaQuery.of(context).size.height;
+    final contentMinHeight = _isDbTableViewExpanded ? 480.0 : 300.0;
+    final contentMaxHeight = _isDbTableViewExpanded
+        ? viewportHeight * 0.78
+        : 460.0;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    hasTableSelection
+                        ? 'Table: ${appState.selectedDbTable}'
+                        : 'Table Content',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (hasTableSelection)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.09),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Text(
+                      '${appState.dbRows.length} rows',
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontSize: 11.8,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                IconButton(
+                  tooltip: _isDbTableViewExpanded
+                      ? 'Collapse table view'
+                      : 'Expand table view',
+                  onPressed: () {
+                    setState(() {
+                      _isDbTableViewExpanded = !_isDbTableViewExpanded;
+                    });
+                  },
+                  icon: Icon(
+                    _isDbTableViewExpanded
+                        ? Icons.fullscreen_exit_rounded
+                        : Icons.fullscreen_rounded,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (!hasTableSelection)
+              _buildDbContentHint(
+                context,
+                message:
+                    'Upload a .db file and choose a table to view its contents.',
+                minHeight: contentMinHeight,
+              )
+            else if (!hasColumns)
+              _buildDbContentHint(
+                context,
+                message: 'The selected table has no columns to display.',
+                minHeight: contentMinHeight,
+              )
+            else
+              Container(
+                constraints: BoxConstraints(
+                  minHeight: contentMinHeight,
+                  maxHeight: contentMaxHeight,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.18,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Scrollbar(
+                    controller: _dbHorizontalScrollController,
+                    thumbVisibility: true,
+                    trackVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _dbHorizontalScrollController,
+                      scrollDirection: Axis.horizontal,
+                      child: Scrollbar(
+                        controller: _dbVerticalScrollController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _dbVerticalScrollController,
+                          child: DataTable(
+                            columns: appState.dbColumns
+                                .map(
+                                  (column) => DataColumn(label: Text(column)),
+                                )
+                                .toList(),
+                            rows: appState.dbRows
+                                .map(
+                                  (row) => DataRow(
+                                    cells: row
+                                        .map(
+                                          (value) => DataCell(
+                                            SelectableText(
+                                              value,
+                                              minLines: 1,
+                                              maxLines: 1,
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDbContentHint(
+    BuildContext context, {
+    required String message,
+    required double minHeight,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(minHeight: minHeight),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
+      ),
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: colorScheme.outline),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter(BuildContext context) {
     return Center(
       child: Column(
         children: [
@@ -654,16 +1191,6 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               ),
             ),
           ),
-         /* const SizedBox(height: 8),
-          Text(
-            'Developed and designed by mobile team',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),*/
         ],
       ),
     );
@@ -687,10 +1214,7 @@ class _PartyParticle {
 }
 
 class _PartyPopPainter extends CustomPainter {
-  const _PartyPopPainter({
-    required this.progress,
-    required this.particles,
-  });
+  const _PartyPopPainter({required this.progress, required this.particles});
 
   final double progress;
   final List<_PartyParticle> particles;

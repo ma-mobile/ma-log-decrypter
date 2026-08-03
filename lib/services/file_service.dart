@@ -21,6 +21,24 @@ class FileService {
     }
   }
 
+  /// Pick a SQLite database file
+  static Future<File?> pickDatabaseFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['db', 'sqlite', 'sqlite3'],
+        dialogTitle: 'Select SQLite Database File',
+      );
+
+      if (result != null && result.files.single.path != null) {
+        return File(result.files.single.path!);
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Error picking database file: $e');
+    }
+  }
+
   /// Pick an RSA private key file (PEM)
   static Future<File?> pickPrivateKeyFile() async {
     try {

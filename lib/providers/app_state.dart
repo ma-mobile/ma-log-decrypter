@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/database_service.dart';
 import '../services/encryption_service.dart';
 import '../services/file_service.dart';
 
@@ -15,7 +16,16 @@ class AppState extends ChangeNotifier {
   String _decryptedContent = '';
   String _status = '';
   String _errorMessage = '';
+  File? _selectedDbFile;
+  List<String> _dbTables = [];
+  String _dbTableSearchQuery = '';
+  String? _selectedDbTable;
+  List<String> _dbColumns = [];
+  List<List<String>> _dbRows = [];
+  String _dbStatus = '';
+  String _dbErrorMessage = '';
   bool _isLoading = false;
+  bool _isDbLoading = false;
 
   // Getters
   File? get selectedFile => _selectedFile;
@@ -25,7 +35,26 @@ class AppState extends ChangeNotifier {
   String get decryptedContent => _decryptedContent;
   String get status => _status;
   String get errorMessage => _errorMessage;
+  File? get selectedDbFile => _selectedDbFile;
+  List<String> get dbTables => _dbTables;
+  String get dbTableSearchQuery => _dbTableSearchQuery;
+  List<String> get filteredDbTables {
+    final query = _dbTableSearchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      return _dbTables;
+    }
+    return _dbTables
+        .where((table) => table.toLowerCase().contains(query))
+        .toList();
+  }
+
+  String? get selectedDbTable => _selectedDbTable;
+  List<String> get dbColumns => _dbColumns;
+  List<List<String>> get dbRows => _dbRows;
+  String get dbStatus => _dbStatus;
+  String get dbErrorMessage => _dbErrorMessage;
   bool get isLoading => _isLoading;
+  bool get isDbLoading => _isDbLoading;
   bool get hasDecryptedContent => _decryptedContent.isNotEmpty;
 
   /// Select an encrypted file
@@ -191,7 +220,15 @@ class AppState extends ChangeNotifier {
     _decryptedContent = '';
     _status = '';
     _errorMessage = '';
+    _selectedDbFile = null;
+    _dbTables = [];
+    _selectedDbTable = null;
+    _dbColumns = [];
+    _dbRows = [];
+    _dbStatus = '';
+    _dbErrorMessage = '';
     _isLoading = false;
+    _isDbLoading = false;
     notifyListeners();
   }
 
@@ -209,6 +246,87 @@ class AppState extends ChangeNotifier {
     _decryptedContent = '';
     _status = '';
     _errorMessage = '';
+    notifyListeners();
+  }
+
+  Future<void> selectDatabaseFile() async {
+    try {
+      _isDbLoading = true;
+      _dbErrorMessage = '';
+      _dbStatus = 'Selecting database file...';
+      notifyListeners();
+
+      final file = await FileService.pickDatabaseFile();
+      if (file == null) {
+        _dbStatus = '';
+        return;
+      }
+
+      _selectedDbFile = file;
+      _dbStatus =
+          'Loading tables from ${FileService.getFileName(file.path)}...';
+      notifyListeners();
+
+      _dbTables = DatabaseService.listTables(file);
+      _dbTableSearchQuery = '';
+      _selectedDbTable = null;
+      _dbColumns = [];
+      _dbRows = [];
+      _dbStatus =
+          'Database loaded (${_dbTables.length} table${_dbTables.length == 1 ? '' : 's'})';
+    } catch (e) {
+      _dbErrorMessage = 'Failed to load database: $e';
+      _dbStatus = '';
+    } finally {
+      _isDbLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> selectDatabaseTable(String tableName) async {
+    if (_selectedDbFile == null) {
+      _dbErrorMessage = 'Please upload a database file first';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      _isDbLoading = true;
+      _dbErrorMessage = '';
+      _selectedDbTable = tableName;
+      _dbStatus = 'Loading rows from "$tableName"...';
+      notifyListeners();
+
+      final tableData = DatabaseService.readTable(_selectedDbFile!, tableName);
+      _dbColumns = tableData.columns;
+      _dbRows = tableData.rows;
+      _dbStatus = 'Showing ${_dbRows.length} rows from "$tableName"';
+    } catch (e) {
+      _dbColumns = [];
+      _dbRows = [];
+      _dbErrorMessage = 'Failed to read table: $e';
+      _dbStatus = '';
+    } finally {
+      _isDbLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void clearDatabaseSelection() {
+    _selectedDbFile = null;
+    _dbTables = [];
+    _dbTableSearchQuery = '';
+    _selectedDbTable = null;
+    _dbColumns = [];
+    _dbRows = [];
+    _dbStatus = '';
+    _dbErrorMessage = '';
+    _isDbLoading = false;
+    notifyListeners();
+  }
+
+  void updateDbTableSearchQuery(String query) {
+    _dbTableSearchQuery = query;
     notifyListeners();
   }
 }
