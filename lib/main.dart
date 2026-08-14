@@ -144,12 +144,12 @@ class MyApp extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       elevatedButtonTheme: const ElevatedButtonThemeData(
         style: ButtonStyle(
           padding: WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(

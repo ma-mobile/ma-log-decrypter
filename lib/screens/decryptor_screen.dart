@@ -143,9 +143,9 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                         return SingleChildScrollView(
                           padding: EdgeInsets.fromLTRB(
                             horizontalPadding,
-                            18,
-                            horizontalPadding,
                             24,
+                            horizontalPadding,
+                            32,
                           ),
                           child: Center(
                             child: ConstrainedBox(
@@ -154,9 +154,9 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   _buildHeaderCard(context),
-                                  const SizedBox(height: 18),
+                                  const SizedBox(height: 24),
                                   _buildModeMenu(context),
-                                  const SizedBox(height: 18),
+                                  const SizedBox(height: 24),
                                   if (_selectedMode == _ToolMode.decryptor &&
                                     isWide)
                                   Row(
@@ -184,7 +184,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                                   Column(
                                     children: [
                                       _buildControlPanel(context, appState),
-                                      const SizedBox(height: 18),
+                                      const SizedBox(height: 24),
                                       _buildContentCard(context, appState),
                                     ],
                                   ),
@@ -216,15 +216,15 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                                   Column(
                                     children: [
                                       _buildDbViewerPanel(context, appState),
-                                      const SizedBox(height: 18),
+                                      const SizedBox(height: 24),
                                       _buildDbTableContentCard(
                                         context,
                                         appState,
                                       ),
                                     ],
                                   ),
-                                const SizedBox(height: 100),
-                                _buildFooter(context),
+                               // const SizedBox(height: 100),
+                               // _buildFooter(context),
                               ],
                             ),
                           ),
@@ -259,7 +259,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                                 size: 48,
                                 color: overlayColor.primary,
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
                               Text(
                                 'Drop file to open',
                                 style: TextStyle(
@@ -304,31 +304,31 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Row(
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: colorScheme.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(Icons.shield_rounded, color: colorScheme.primary),
+              child: Icon(Icons.shield_rounded, color: colorScheme.primary, size: 28),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Decrypt logs or inspect SQLite databases',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
-                  SizedBox(height: 3),
+                  SizedBox(height: 6),
                   Text(
                     'Use the menu below to switch between decryption and DB table viewing.',
-                    style: TextStyle(fontSize: 12.5),
+                    style: TextStyle(fontSize: 13.5),
                   ),
                 ],
               ),
@@ -349,7 +349,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
   Widget _buildModeMenu(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: SegmentedButton<_ToolMode>(
           segments: const [
             ButtonSegment<_ToolMode>(
@@ -423,16 +423,16 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     return Column(
       children: [
         _buildFileSection(context, appState),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         _buildRecentItemsSection(context, appState, RecentItemType.log),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         _buildBatchSection(context, appState),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         _buildPasswordSection(context, appState),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         _buildButtonsSection(context, appState),
         if (appState.status.isNotEmpty || appState.errorMessage.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
           _buildStatusSection(context, appState),
         ],
       ],
@@ -453,21 +453,21 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               type == RecentItemType.log ? 'Recent log files' : 'Recent databases',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 180),
+              constraints: const BoxConstraints(maxHeight: 220),
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final item = items[index];
                   return ListTile(
@@ -519,7 +519,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -528,7 +528,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 const Expanded(
                   child: Text(
                     'Batch Decryption',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                 ),
                 if (hasFiles)
@@ -552,10 +552,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 FilledButton.icon(
                   onPressed: appState.isBatchRunning
@@ -582,12 +582,12 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               ],
             ),
             if (hasFiles) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 'Output folder: ${appState.batchOutputFolder.isEmpty ? 'Same as source (current directory for multi-source)' : appState.batchOutputFolder}',
                 style: TextStyle(fontSize: 12, color: colorScheme.outline),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               OutlinedButton.icon(
                 onPressed: appState.isBatchRunning
                     ? null
@@ -595,7 +595,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 icon: const Icon(Icons.drive_file_move_outline),
                 label: const Text('Choose Output Folder'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -608,18 +608,18 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               ),
             ],
             if (appState.isBatchRunning) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               LinearProgressIndicator(
                 borderRadius: BorderRadius.circular(8),
               ),
             ],
             if (appState.batchStatus.isNotEmpty ||
                 appState.batchErrorMessage.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _buildBatchStatusSection(context, appState),
             ],
             if (hasResults) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _buildBatchResultsSection(context, appState),
             ],
           ],
@@ -633,7 +633,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     final isError = appState.batchErrorMessage.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isError
             ? Color.alphaBlend(
@@ -671,7 +671,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      constraints: const BoxConstraints(maxHeight: 240),
+      constraints: const BoxConstraints(maxHeight: 320),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colorScheme.outlineVariant),
@@ -681,7 +681,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
         shrinkWrap: true,
         padding: const EdgeInsets.all(10),
         itemCount: appState.batchResults.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
           final result = appState.batchResults[index];
           return ListTile(
@@ -718,15 +718,15 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     return Column(
       children: [
         _buildDbFileSection(context, appState),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         _buildRecentItemsSection(context, appState, RecentItemType.database),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         _buildDbTableListSection(context, appState),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         _buildSqlQuerySection(context, appState),
         if (appState.dbStatus.isNotEmpty ||
             appState.dbErrorMessage.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
           _buildDbStatusSection(context, appState),
         ],
       ],
@@ -746,15 +746,15 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'SQL Query',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextField(
               controller: _sqlQueryController,
               onChanged: appState.updateSqlQuery,
@@ -773,10 +773,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 FilledButton.icon(
                   onPressed: appState.isDbLoading
@@ -804,11 +804,11 @@ class _DecryptorScreenState extends State<DecryptorScreen>
             ),
             if (appState.sqlStatus.isNotEmpty ||
                 appState.sqlErrorMessage.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _buildSqlStatusSection(context, appState),
             ],
             if (hasResult) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 'Query Result',
                 style: TextStyle(
@@ -816,7 +816,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                   color: colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Container(
                 constraints: const BoxConstraints(
                   minHeight: 160,
@@ -872,7 +872,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     final isError = appState.sqlErrorMessage.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isError
             ? Color.alphaBlend(
@@ -911,18 +911,18 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Step 1 · Upload database file',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: colorScheme.surfaceContainerHighest.withValues(
                   alpha: 0.35,
@@ -941,7 +941,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                         ? colorScheme.outline
                         : colorScheme.primary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       appState.selectedDbFile?.path ?? 'No .db file selected',
@@ -957,10 +957,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 FilledButton.icon(
                   onPressed: appState.isDbLoading
@@ -999,15 +999,15 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Step 2 · Choose table',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
               controller: _dbTableSearchController,
               onChanged: appState.updateDbTableSearchQuery,
@@ -1027,7 +1027,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                       ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (appState.dbTables.isEmpty)
               Text(
                 'Upload a database file to view available tables.',
@@ -1044,7 +1044,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: filteredTables.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final tableName = filteredTables[index];
                     final isSelected = appState.selectedDbTable == tableName;
@@ -1055,8 +1055,8 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                           : () => appState.selectDatabaseTable(tableName),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                          horizontal: 14,
+                          vertical: 12,
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
@@ -1080,7 +1080,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                                   ? colorScheme.primary
                                   : colorScheme.onSurfaceVariant,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 tableName,
@@ -1120,7 +1120,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               colorScheme.surface,
             ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Icon(
@@ -1148,18 +1148,18 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Step 1 · Select encrypted file',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: colorScheme.surfaceContainerHighest.withValues(
                   alpha: 0.35,
@@ -1178,7 +1178,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                         ? colorScheme.outline
                         : colorScheme.primary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       appState.selectedFile?.path ?? 'No file selected',
@@ -1194,10 +1194,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 FilledButton.icon(
                   onPressed: () => appState.selectFile(),
@@ -1228,15 +1228,15 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Step 2 · Provide decryption details',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             DropdownButtonFormField<EncryptionMode>(
               initialValue: appState.encryptionMode,
               decoration: const InputDecoration(labelText: 'Encryption mode'),
@@ -1254,7 +1254,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 }
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (!isRsaMode)
               TextField(
                 controller: _passwordController,
@@ -1284,7 +1284,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 },
               ),
             if (isRsaMode) _buildRsaKeySection(appState),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               isRsaMode
                   ? 'RSA mode uses the bundled private key by default. You can choose a .pem key manually.'
@@ -1307,7 +1307,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
             child: Row(
               children: [
                 const Icon(Icons.vpn_key, size: 18),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     appState.privateKeyFile!.path,
@@ -1330,10 +1330,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
   Widget _buildButtonsSection(BuildContext context, AppState appState) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Wrap(
-          spacing: 10,
-          runSpacing: 10,
+          spacing: 12,
+          runSpacing: 12,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             FilledButton.icon(
@@ -1459,7 +1459,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               colorScheme.surface,
             ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Icon(
@@ -1490,7 +1490,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1499,7 +1499,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 const Expanded(
                   child: Text(
                     'Decrypted Content',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                 ),
                 if (hasContent) ...[
@@ -1512,7 +1512,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                       'Decrypted content copied',
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                 ],
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1534,7 +1534,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (hasContent)
               TextField(
                 controller: _logSearchController,
@@ -1554,7 +1554,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                         ),
                 ),
               ),
-            if (hasContent) const SizedBox(height: 12),
+            if (hasContent) const SizedBox(height: 16),
             Container(
               height: contentHeight,
               decoration: BoxDecoration(
@@ -1571,7 +1571,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 expands: true,
                 decoration: InputDecoration(
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.all(12),
+                  contentPadding: const EdgeInsets.all(14),
                   hintText: 'Decrypted content will appear here',
                   hintStyle: TextStyle(color: colorScheme.outline),
                 ),
@@ -1609,7 +1609,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1639,6 +1639,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                       'Table data copied as CSV',
                     ),
                   ),
+                  const SizedBox(width: 8),
                   IconButton(
                     tooltip: _showSchemaPanel ? 'Hide schema' : 'Show schema',
                     icon: Icon(
@@ -1653,8 +1654,9 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                       });
                     },
                   ),
+                  const SizedBox(width: 8),
                   _buildExportMenu(context, appState),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -1691,7 +1693,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (hasTableSelection) ...[
               TextField(
                 controller: _dbRowSearchController,
@@ -1711,7 +1713,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                         ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
             ],
             if (!hasTableSelection)
               _buildDbContentHint(
@@ -1842,13 +1844,13 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               color: colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           if (schema.ddl.isNotEmpty) ...[
             SelectableText(
               schema.ddl,
               style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
           ],
           if (schema.indexes.isNotEmpty) ...[
             Text(
@@ -1868,7 +1870,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
           ],
           if (schema.foreignKeys.isNotEmpty) ...[
             Text(
@@ -1911,7 +1913,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
       ),
       alignment: Alignment.center,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Text(
           message,
           textAlign: TextAlign.center,
@@ -1923,21 +1925,24 @@ class _DecryptorScreenState extends State<DecryptorScreen>
 
   Widget _buildFooter(BuildContext context) {
     return Center(
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: _onFooterIconTap,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                'assets/app_icon.png',
-                width: 58,
-                height: 58,
-                fit: BoxFit.cover,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          children: [
+            GestureDetector(
+              onTap: _onFooterIconTap,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.asset(
+                  'assets/app_icon.png',
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
