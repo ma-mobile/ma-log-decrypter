@@ -1,5 +1,4 @@
 // ignore_for_file: use_build_context_synchronously
-import 'dart:math';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +11,7 @@ import '../services/encryption_service.dart';
 import '../services/file_service.dart';
 import '../services/settings_service.dart';
 
-enum _ToolMode { decryptor, databaseViewer }
+enum _ToolMode { decryptor, batchDecryptor, databaseViewer }
 
 class DecryptorScreen extends StatefulWidget {
   const DecryptorScreen({super.key});
@@ -21,8 +20,7 @@ class DecryptorScreen extends StatefulWidget {
   State<DecryptorScreen> createState() => _DecryptorScreenState();
 }
 
-class _DecryptorScreenState extends State<DecryptorScreen>
-    with SingleTickerProviderStateMixin {
+class _DecryptorScreenState extends State<DecryptorScreen> {
   late TextEditingController _passwordController;
   late TextEditingController _decryptedContentController;
   late TextEditingController _logSearchController;
@@ -31,11 +29,6 @@ class _DecryptorScreenState extends State<DecryptorScreen>
   late TextEditingController _sqlQueryController;
   late ScrollController _dbHorizontalScrollController;
   late ScrollController _dbVerticalScrollController;
-  late AnimationController _partyController;
-  final Random _random = Random();
-  List<_PartyParticle> _partyParticles = [];
-  int _footerTapCount = 0;
-  DateTime? _lastFooterTapAt;
   bool _obscurePassword = true;
   _ToolMode _selectedMode = _ToolMode.decryptor;
   bool _isDbTableViewExpanded = false;
@@ -53,22 +46,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     _sqlQueryController = TextEditingController();
     _dbHorizontalScrollController = ScrollController();
     _dbVerticalScrollController = ScrollController();
-    _partyController =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 1300),
-        )..addStatusListener((status) {
-          if (status == AnimationStatus.completed) {
-            setState(() {
-              _partyParticles = [];
-            });
-          }
-        });
   }
 
   @override
   void dispose() {
-    _partyController.dispose();
     _passwordController.dispose();
     _decryptedContentController.dispose();
     _logSearchController.dispose();
@@ -115,127 +96,29 @@ class _DecryptorScreenState extends State<DecryptorScreen>
         },
         child: Stack(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    colorScheme.primary.withValues(alpha: 0.06),
-                    colorScheme.surface,
-                  ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildSidebar(context),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          colorScheme.primary.withValues(alpha: 0.06),
+                          colorScheme.surface,
+                        ],
+                      ),
+                    ),
+                    child: SafeArea(
+                      child: _buildMainContent(context),
+                    ),
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                child: Consumer<AppState>(
-                  builder: (context, appState, _) {
-                    if (_selectedMode == _ToolMode.decryptor) {
-                      _decryptedContentController.text =
-                          appState.filteredDecryptedContent;
-                    }
-
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final isWide = width >= 1040;
-                        final horizontalPadding = width >= 1200 ? 32.0 : 18.0;
-
-                        return SingleChildScrollView(
-                          padding: EdgeInsets.fromLTRB(
-                            horizontalPadding,
-                            24,
-                            horizontalPadding,
-                            32,
-                          ),
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 1240),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildHeaderCard(context),
-                                  const SizedBox(height: 24),
-                                  _buildModeMenu(context),
-                                  const SizedBox(height: 24),
-                                  if (_selectedMode == _ToolMode.decryptor &&
-                                    isWide)
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        flex: 5,
-                                        child: _buildControlPanel(
-                                          context,
-                                          appState,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 18),
-                                      Expanded(
-                                        flex: 6,
-                                        child: _buildContentCard(
-                                          context,
-                                          appState,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                else if (_selectedMode == _ToolMode.decryptor)
-                                  Column(
-                                    children: [
-                                      _buildControlPanel(context, appState),
-                                      const SizedBox(height: 24),
-                                      _buildContentCard(context, appState),
-                                    ],
-                                  ),
-                                if (_selectedMode == _ToolMode.databaseViewer &&
-                                    isWide)
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        flex: 4,
-                                        child: _buildDbViewerPanel(
-                                          context,
-                                          appState,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 18),
-                                      Expanded(
-                                        flex: 7,
-                                        child: _buildDbTableContentCard(
-                                          context,
-                                          appState,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                else if (_selectedMode ==
-                                    _ToolMode.databaseViewer)
-                                  Column(
-                                    children: [
-                                      _buildDbViewerPanel(context, appState),
-                                      const SizedBox(height: 24),
-                                      _buildDbTableContentCard(
-                                        context,
-                                        appState,
-                                      ),
-                                    ],
-                                  ),
-                               // const SizedBox(height: 100),
-                               // _buildFooter(context),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+              ],
             ),
-          ),
           if (_isDraggingOver)
             Positioned.fill(
               child: IgnorePointer(
@@ -277,30 +160,193 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 ),
               ),
             ),
-          if (_partyParticles.isNotEmpty)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: AnimatedBuilder(
-                  animation: _partyController,
-                  builder: (context, _) {
-                    return CustomPaint(
-                      painter: _PartyPopPainter(
-                        progress: _partyController.value,
-                        particles: _partyParticles,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
         ],
       ),
     ));
   }
 
-  Widget _buildHeaderCard(BuildContext context) {
+  Widget _buildSidebar(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isExtended = MediaQuery.of(context).size.width >= 1000;
+
+    return NavigationRail(
+      extended: isExtended,
+      minExtendedWidth: 220,
+      backgroundColor: colorScheme.surfaceContainerLowest,
+      indicatorColor: colorScheme.primaryContainer,
+      selectedIndex: _selectedMode.index,
+      onDestinationSelected: (index) {
+        setState(() => _selectedMode = _ToolMode.values[index]);
+      },
+      leading: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          mainAxisAlignment: .start,
+          children: [
+           /* ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                'assets/app_icon.png',
+                width: 32,
+                height: 32,
+              ),
+            ),*/
+            if (isExtended) ...[
+              const SizedBox(width: 12),
+              const Text(
+                'Log Decryptor',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ],
+        ),
+      ),
+      destinations: const [
+        NavigationRailDestination(
+          icon: Icon(Icons.lock_open_outlined),
+          selectedIcon: Icon(Icons.lock_open_rounded),
+          label: Text('Decrypt Logs'),
+        ),
+        NavigationRailDestination(
+          icon: Icon(Icons.folder_copy_outlined),
+          selectedIcon: Icon(Icons.folder_copy_rounded),
+          label: Text('Batch Decryption'),
+        ),
+        NavigationRailDestination(
+          icon: Icon(Icons.table_view_outlined),
+          selectedIcon: Icon(Icons.table_view_rounded),
+          label: Text('DB Viewer'),
+        ),
+      ],
+      trailing: Expanded(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: IconButton(
+              tooltip: 'Toggle theme',
+              icon: Icon(
+                themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              ),
+              onPressed: () => themeProvider.toggleTheme(context),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent(BuildContext context) {
+    return Consumer<AppState>(
+      builder: (context, appState, _) {
+        if (_selectedMode == _ToolMode.decryptor) {
+          _decryptedContentController.text =
+              appState.filteredDecryptedContent;
+        }
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final isWide = width >= 900;
+            final horizontalPadding = width >= 1100 ? 32.0 : 20.0;
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                24,
+                horizontalPadding,
+                32,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1200),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderCard(context),
+                      const SizedBox(height: 24),
+                      if (_selectedMode == _ToolMode.decryptor && isWide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 5,
+                              child: _buildControlPanel(context, appState),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              flex: 6,
+                              child: _buildContentCard(context, appState),
+                            ),
+                          ],
+                        )
+                      else if (_selectedMode == _ToolMode.decryptor)
+                        Column(
+                          children: [
+                            _buildControlPanel(context, appState),
+                            const SizedBox(height: 24),
+                            _buildContentCard(context, appState),
+                          ],
+                        ),
+                      if (_selectedMode == _ToolMode.databaseViewer && isWide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: _buildDbViewerPanel(context, appState),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              flex: 7,
+                              child: _buildDbTableContentCard(
+                                context,
+                                appState,
+                              ),
+                            ),
+                          ],
+                        )
+                      else if (_selectedMode == _ToolMode.databaseViewer)
+                        Column(
+                          children: [
+                            _buildDbViewerPanel(context, appState),
+                            const SizedBox(height: 24),
+                            _buildDbTableContentCard(context, appState),
+                          ],
+                        ),
+                      if (_selectedMode == _ToolMode.batchDecryptor)
+                        _buildBatchPanel(context, appState),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildHeaderCard(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (title, subtitle, icon) = switch (_selectedMode) {
+      _ToolMode.decryptor => (
+          'Decrypt Logs',
+          'Decrypt encrypted log files with a password or RSA private key.',
+          Icons.lock_open_rounded,
+        ),
+      _ToolMode.batchDecryptor => (
+          'Batch Decryption',
+          'Decrypt multiple files at once using the configured password and encryption mode.',
+          Icons.folder_copy_rounded,
+        ),
+      _ToolMode.databaseViewer => (
+          'Database Viewer',
+          'Open SQLite databases, browse tables, run queries and export data.',
+          Icons.table_view_rounded,
+        ),
+    };
 
     return Card(
       child: Padding(
@@ -314,109 +360,36 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                 color: colorScheme.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(Icons.shield_rounded, color: colorScheme.primary, size: 28),
+              child: Icon(
+                icon,
+                color: colorScheme.primary,
+                size: 28,
+              ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Decrypt logs or inspect SQLite databases',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  SizedBox(height: 6),
+                  const SizedBox(height: 6),
                   Text(
-                    'Use the menu below to switch between decryption and DB table viewing.',
-                    style: TextStyle(fontSize: 13.5),
+                    subtitle,
+                    style: const TextStyle(fontSize: 13.5),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              tooltip: 'Toggle theme',
-              icon: Icon(
-                themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-              ),
-              onPressed: () => themeProvider.toggleTheme(context),
-            ),
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildModeMenu(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SegmentedButton<_ToolMode>(
-          segments: const [
-            ButtonSegment<_ToolMode>(
-              value: _ToolMode.decryptor,
-              icon: Icon(Icons.lock_open_rounded),
-              label: Text('Decrypt Logs'),
-            ),
-            ButtonSegment<_ToolMode>(
-              value: _ToolMode.databaseViewer,
-              icon: Icon(Icons.table_view_rounded),
-              label: Text('DB Viewer'),
-            ),
-          ],
-          selected: {_selectedMode},
-          onSelectionChanged: (selectedModes) {
-            setState(() {
-              _selectedMode = selectedModes.first;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  void _onFooterIconTap() {
-    final now = DateTime.now();
-    if (_lastFooterTapAt == null ||
-        now.difference(_lastFooterTapAt!) > const Duration(seconds: 2)) {
-      _footerTapCount = 1;
-    } else {
-      _footerTapCount += 1;
-    }
-    _lastFooterTapAt = now;
-
-    if (_footerTapCount >= 3) {
-      _footerTapCount = 0;
-      _launchPartyPop();
-    }
-  }
-
-  void _launchPartyPop() {
-    final colors = <Color>[
-      const Color(0xFF0F5D55),
-      const Color(0xFF1B8A5A),
-      const Color(0xFF42B883),
-      const Color(0xFF6BCB77),
-      const Color(0xFF8FD694),
-    ];
-
-    setState(() {
-      _partyParticles = List.generate(52, (index) {
-        final horizontalSpread = (_random.nextDouble() - 0.5) * 300;
-        final velocityX = (_random.nextDouble() - 0.5) * 190;
-        final velocityY = -260 - _random.nextDouble() * 260;
-        final size = 3 + _random.nextDouble() * 4.8;
-        final color = colors[_random.nextInt(colors.length)];
-        return _PartyParticle(
-          horizontalSpread: horizontalSpread,
-          velocityX: velocityX,
-          velocityY: velocityY,
-          size: size,
-          color: color,
-        );
-      });
-    });
-
-    _partyController.forward(from: 0);
   }
 
   Widget _buildControlPanel(BuildContext context, AppState appState) {
@@ -425,8 +398,6 @@ class _DecryptorScreenState extends State<DecryptorScreen>
         _buildFileSection(context, appState),
         const SizedBox(height: 20),
         _buildRecentItemsSection(context, appState, RecentItemType.log),
-        const SizedBox(height: 20),
-        _buildBatchSection(context, appState),
         const SizedBox(height: 20),
         _buildPasswordSection(context, appState),
         const SizedBox(height: 20),
@@ -509,6 +480,16 @@ class _DecryptorScreenState extends State<DecryptorScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBatchPanel(BuildContext context, AppState appState) {
+    return Column(
+      children: [
+        _buildPasswordSection(context, appState),
+        const SizedBox(height: 20),
+        _buildBatchSection(context, appState),
+      ],
     );
   }
 
@@ -1923,72 +1904,6 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     );
   }
 
-  Widget _buildFooter(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          children: [
-            GestureDetector(
-              onTap: _onFooterIconTap,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.asset(
-                  'assets/app_icon.png',
-                  width: 64,
-                  height: 64,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-class _PartyParticle {
-  const _PartyParticle({
-    required this.horizontalSpread,
-    required this.velocityX,
-    required this.velocityY,
-    required this.size,
-    required this.color,
-  });
 
-  final double horizontalSpread;
-  final double velocityX;
-  final double velocityY;
-  final double size;
-  final Color color;
-}
-
-class _PartyPopPainter extends CustomPainter {
-  const _PartyPopPainter({required this.progress, required this.particles});
-
-  final double progress;
-  final List<_PartyParticle> particles;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final t = Curves.easeOut.transform(progress.clamp(0.0, 1.0));
-    const gravity = 520.0;
-    final centerX = size.width / 2;
-    final baseY = size.height - 86;
-
-    for (final particle in particles) {
-      final dx = centerX + particle.horizontalSpread + (particle.velocityX * t);
-      final dy = baseY + (particle.velocityY * t) + (0.5 * gravity * t * t);
-      final alpha = ((1.0 - t) * 255).clamp(0.0, 255.0).toInt();
-      final paint = Paint()..color = particle.color.withAlpha(alpha);
-      canvas.drawCircle(Offset(dx, dy), particle.size, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _PartyPopPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.particles != particles;
-  }
-}
