@@ -1,9 +1,16 @@
 // ignore_for_file: use_build_context_synchronously
 import 'dart:math';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../main.dart';
 import '../providers/app_state.dart';
+import '../providers/theme_provider.dart';
+import '../services/database_service.dart';
 import '../services/encryption_service.dart';
+import '../services/file_service.dart';
+import '../services/settings_service.dart';
 
 enum _ToolMode { decryptor, databaseViewer }
 
@@ -18,7 +25,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     with SingleTickerProviderStateMixin {
   late TextEditingController _passwordController;
   late TextEditingController _decryptedContentController;
+  late TextEditingController _logSearchController;
   late TextEditingController _dbTableSearchController;
+  late TextEditingController _dbRowSearchController;
+  late TextEditingController _sqlQueryController;
   late ScrollController _dbHorizontalScrollController;
   late ScrollController _dbVerticalScrollController;
   late AnimationController _partyController;
@@ -29,13 +39,18 @@ class _DecryptorScreenState extends State<DecryptorScreen>
   bool _obscurePassword = true;
   _ToolMode _selectedMode = _ToolMode.decryptor;
   bool _isDbTableViewExpanded = false;
+  bool _isDraggingOver = false;
+  bool _showSchemaPanel = false;
 
   @override
   void initState() {
     super.initState();
     _passwordController = TextEditingController();
     _decryptedContentController = TextEditingController();
+    _logSearchController = TextEditingController();
     _dbTableSearchController = TextEditingController();
+    _dbRowSearchController = TextEditingController();
+    _sqlQueryController = TextEditingController();
     _dbHorizontalScrollController = ScrollController();
     _dbVerticalScrollController = ScrollController();
     _partyController =
@@ -56,10 +71,30 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     _partyController.dispose();
     _passwordController.dispose();
     _decryptedContentController.dispose();
+    _logSearchController.dispose();
     _dbTableSearchController.dispose();
+    _dbRowSearchController.dispose();
+    _sqlQueryController.dispose();
     _dbHorizontalScrollController.dispose();
     _dbVerticalScrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleDroppedFiles(List<DropItem> files) async {
+    if (files.isEmpty) return;
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    final first = files.first;
+    final path = first.path;
+
+    if (FileService.isDatabaseFile(path)) {
+      setState(() => _selectedMode = _ToolMode.databaseViewer);
+      await appState.openFileByPath(path, isDb: true);
+    } else {
+      setState(() => _selectedMode = _ToolMode.decryptor);
+      await appState.openFileByPath(path, isDb: false);
+    }
+
   }
 
   @override
@@ -67,57 +102,62 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Log File Decryptor',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
+      appBar: const PreferredSize(
+        preferredSize: Size.fromHeight(40),
+        child: TitleBar(),
       ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  colorScheme.primary.withValues(alpha: 0.06),
-                  colorScheme.surface,
-                ],
+      body: DropTarget(
+        onDragEntered: (_) => setState(() => _isDraggingOver = true),
+        onDragExited: (_) => setState(() => _isDraggingOver = false),
+        onDragDone: (detail) {
+          setState(() => _isDraggingOver = false);
+          _handleDroppedFiles(detail.files);
+        },
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    colorScheme.primary.withValues(alpha: 0.06),
+                    colorScheme.surface,
+                  ],
+                ),
               ),
-            ),
-            child: SafeArea(
-              child: Consumer<AppState>(
-                builder: (context, appState, _) {
-                  if (_selectedMode == _ToolMode.decryptor) {
-                    _decryptedContentController.text =
-                        appState.decryptedContent;
-                  }
+              child: SafeArea(
+                child: Consumer<AppState>(
+                  builder: (context, appState, _) {
+                    if (_selectedMode == _ToolMode.decryptor) {
+                      _decryptedContentController.text =
+                          appState.filteredDecryptedContent;
+                    }
 
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.maxWidth;
-                      final isWide = width >= 1040;
-                      final horizontalPadding = width >= 1200 ? 32.0 : 18.0;
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        final isWide = width >= 1040;
+                        final horizontalPadding = width >= 1200 ? 32.0 : 18.0;
 
-                      return SingleChildScrollView(
-                        padding: EdgeInsets.fromLTRB(
-                          horizontalPadding,
-                          18,
-                          horizontalPadding,
-                          24,
-                        ),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1240),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildHeaderCard(context),
-                                const SizedBox(height: 18),
-                                _buildModeMenu(context),
-                                const SizedBox(height: 18),
-                                if (_selectedMode == _ToolMode.decryptor &&
+                        return SingleChildScrollView(
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPadding,
+                            18,
+                            horizontalPadding,
+                            24,
+                          ),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 1240),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildHeaderCard(context),
+                                  const SizedBox(height: 18),
+                                  _buildModeMenu(context),
+                                  const SizedBox(height: 18),
+                                  if (_selectedMode == _ToolMode.decryptor &&
                                     isWide)
                                   Row(
                                     crossAxisAlignment:
@@ -196,6 +236,47 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               ),
             ),
           ),
+          if (_isDraggingOver)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Builder(
+                  builder: (context) {
+                    final overlayColor = Theme.of(context).colorScheme;
+                    return Container(
+                      color: overlayColor.primary.withValues(alpha: 0.15),
+                      alignment: Alignment.center,
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28,
+                            vertical: 20,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.cloud_upload_rounded,
+                                size: 48,
+                                color: overlayColor.primary,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Drop file to open',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: overlayColor.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           if (_partyParticles.isNotEmpty)
             Positioned.fill(
               child: IgnorePointer(
@@ -214,11 +295,13 @@ class _DecryptorScreenState extends State<DecryptorScreen>
             ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildHeaderCard(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -249,6 +332,13 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              tooltip: 'Toggle theme',
+              icon: Icon(
+                themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              ),
+              onPressed: () => themeProvider.toggleTheme(context),
             ),
           ],
         ),
@@ -334,6 +424,10 @@ class _DecryptorScreenState extends State<DecryptorScreen>
       children: [
         _buildFileSection(context, appState),
         const SizedBox(height: 14),
+        _buildRecentItemsSection(context, appState, RecentItemType.log),
+        const SizedBox(height: 14),
+        _buildBatchSection(context, appState),
+        const SizedBox(height: 14),
         _buildPasswordSection(context, appState),
         const SizedBox(height: 14),
         _buildButtonsSection(context, appState),
@@ -345,18 +439,470 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     );
   }
 
+  Widget _buildRecentItemsSection(
+    BuildContext context,
+    AppState appState,
+    RecentItemType type,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final items = type == RecentItemType.log
+        ? appState.recentLogFiles
+        : appState.recentDbFiles;
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              type == RecentItemType.log ? 'Recent log files' : 'Recent databases',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 180),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      type == RecentItemType.log
+                          ? Icons.insert_drive_file_outlined
+                          : Icons.storage_outlined,
+                      size: 18,
+                      color: colorScheme.primary,
+                    ),
+                    title: Text(
+                      FileService.getFileName(item.path),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      item.path,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.outline,
+                      ),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      tooltip: 'Remove from recent',
+                      onPressed: () => appState.removeRecentItem(item.path),
+                    ),
+                    onTap: () => appState.openFileByPath(
+                      item.path,
+                      isDb: type == RecentItemType.database,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBatchSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasFiles = appState.hasBatchFiles;
+    final hasResults = appState.hasBatchResults;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Batch Decryption',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (hasFiles)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.09),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Text(
+                      '${appState.batchFiles.length} files',
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontSize: 11.8,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: appState.isBatchRunning
+                      ? null
+                      : () => appState.selectBatchFiles(),
+                  icon: const Icon(Icons.file_copy_rounded),
+                  label: const Text('Select Files'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: appState.isBatchRunning
+                      ? null
+                      : () => appState.selectBatchFolder(),
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('Select Folder'),
+                ),
+                if (hasFiles)
+                  OutlinedButton.icon(
+                    onPressed: appState.isBatchRunning
+                        ? null
+                        : () => appState.clearBatch(),
+                    icon: const Icon(Icons.restart_alt),
+                    label: const Text('Clear'),
+                  ),
+              ],
+            ),
+            if (hasFiles) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Output folder: ${appState.batchOutputFolder.isEmpty ? 'Same as source (current directory for multi-source)' : appState.batchOutputFolder}',
+                style: TextStyle(fontSize: 12, color: colorScheme.outline),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: appState.isBatchRunning
+                    ? null
+                    : () => appState.setBatchOutputFolder(),
+                icon: const Icon(Icons.drive_file_move_outline),
+                label: const Text('Choose Output Folder'),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: appState.isBatchRunning
+                      ? null
+                      : () => appState.decryptBatch(),
+                  icon: const Icon(Icons.lock_open_rounded),
+                  label: const Text('Decrypt All'),
+                ),
+              ),
+            ],
+            if (appState.isBatchRunning) ...[
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ],
+            if (appState.batchStatus.isNotEmpty ||
+                appState.batchErrorMessage.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildBatchStatusSection(context, appState),
+            ],
+            if (hasResults) ...[
+              const SizedBox(height: 12),
+              _buildBatchResultsSection(context, appState),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBatchStatusSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isError = appState.batchErrorMessage.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isError
+            ? Color.alphaBlend(
+                Colors.red.withValues(alpha: 0.08),
+                colorScheme.surface,
+              )
+            : Color.alphaBlend(
+                colorScheme.primary.withValues(alpha: 0.08),
+                colorScheme.surface,
+              ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isError ? Icons.error_outline : Icons.info_outline,
+            color: isError ? Colors.red.shade700 : colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isError ? appState.batchErrorMessage : appState.batchStatus,
+              style: TextStyle(
+                color: isError ? Colors.red.shade800 : colorScheme.onSurface,
+                fontSize: 12.8,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBatchResultsSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 240),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: const EdgeInsets.all(10),
+        itemCount: appState.batchResults.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final result = appState.batchResults[index];
+          return ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              result.success ? Icons.check_circle : Icons.error,
+              color: result.success ? Colors.green : Colors.red,
+              size: 18,
+            ),
+            title: Text(
+              FileService.getFileName(result.inputPath),
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12.5),
+            ),
+            subtitle: result.success
+                ? Text(
+                    'Saved: ${result.outputPath}',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 10.5, color: colorScheme.outline),
+                  )
+                : Text(
+                    'Error: ${result.error}',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 10.5, color: Colors.red.shade700),
+                  ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildDbViewerPanel(BuildContext context, AppState appState) {
     return Column(
       children: [
         _buildDbFileSection(context, appState),
         const SizedBox(height: 14),
+        _buildRecentItemsSection(context, appState, RecentItemType.database),
+        const SizedBox(height: 14),
         _buildDbTableListSection(context, appState),
+        const SizedBox(height: 14),
+        _buildSqlQuerySection(context, appState),
         if (appState.dbStatus.isNotEmpty ||
             appState.dbErrorMessage.isNotEmpty) ...[
           const SizedBox(height: 14),
           _buildDbStatusSection(context, appState),
         ],
       ],
+    );
+  }
+
+  Widget _buildSqlQuerySection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasResult = appState.sqlQueryResult != null;
+
+    if (_sqlQueryController.text != appState.sqlQuery) {
+      _sqlQueryController.value = TextEditingValue(
+        text: appState.sqlQuery,
+        selection: TextSelection.collapsed(offset: appState.sqlQuery.length),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'SQL Query',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _sqlQueryController,
+              onChanged: appState.updateSqlQuery,
+              maxLines: 4,
+              minLines: 2,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12.5),
+              decoration: InputDecoration(
+                hintText:
+                    'SELECT * FROM table_name LIMIT 50',
+                suffixIcon: IconButton(
+                  tooltip: 'Run query',
+                  icon: const Icon(Icons.play_arrow),
+                  onPressed: appState.isDbLoading
+                      ? null
+                      : () => appState.executeSqlQuery(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: appState.isDbLoading
+                      ? null
+                      : () => appState.executeSqlQuery(),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('Run Query'),
+                ),
+                if (hasResult)
+                  OutlinedButton.icon(
+                    onPressed: appState.isDbLoading
+                        ? null
+                        : () => _copyToClipboard(
+                              context,
+                              DatabaseService.exportToCsv(
+                                appState.sqlQueryResult!.columns,
+                                appState.sqlQueryResult!.rows,
+                              ),
+                              'Query result copied as CSV',
+                            ),
+                    icon: const Icon(Icons.copy),
+                    label: const Text('Copy'),
+                  ),
+              ],
+            ),
+            if (appState.sqlStatus.isNotEmpty ||
+                appState.sqlErrorMessage.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _buildSqlStatusSection(context, appState),
+            ],
+            if (hasResult) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Query Result',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                constraints: const BoxConstraints(
+                  minHeight: 160,
+                  maxHeight: 320,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.18,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SingleChildScrollView(
+                      child: DataTable(
+                        columns: appState.sqlQueryResult!.columns
+                            .map((c) => DataColumn(label: Text(c)))
+                            .toList(),
+                        rows: appState.sqlQueryResult!.rows
+                            .map(
+                              (row) => DataRow(
+                                cells: row
+                                    .map(
+                                      (value) => DataCell(
+                                        SelectableText(
+                                          value,
+                                          minLines: 1,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSqlStatusSection(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isError = appState.sqlErrorMessage.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isError
+            ? Color.alphaBlend(
+                Colors.red.withValues(alpha: 0.08),
+                colorScheme.surface,
+              )
+            : Color.alphaBlend(
+                colorScheme.primary.withValues(alpha: 0.08),
+                colorScheme.surface,
+              ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isError ? Icons.error_outline : Icons.info_outline,
+            color: isError ? Colors.red.shade700 : colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isError ? appState.sqlErrorMessage : appState.sqlStatus,
+              style: TextStyle(
+                color: isError ? Colors.red.shade800 : colorScheme.onSurface,
+                fontSize: 12.8,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -940,6 +1486,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final viewportHeight = MediaQuery.of(context).size.height;
     final contentHeight = viewportHeight < 760 ? 300.0 : 430.0;
+    final hasContent = appState.decryptedContent.isNotEmpty;
 
     return Card(
       child: Padding(
@@ -955,6 +1502,18 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
+                if (hasContent) ...[
+                  IconButton(
+                    tooltip: 'Copy to clipboard',
+                    icon: const Icon(Icons.copy, size: 18),
+                    onPressed: () => _copyToClipboard(
+                      context,
+                      appState.decryptedContent,
+                      'Decrypted content copied',
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -976,6 +1535,26 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               ],
             ),
             const SizedBox(height: 12),
+            if (hasContent)
+              TextField(
+                controller: _logSearchController,
+                onChanged: appState.updateLogSearchQuery,
+                decoration: InputDecoration(
+                  labelText: 'Search in decrypted log',
+                  hintText: 'Filter lines...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: appState.logSearchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _logSearchController.clear();
+                            appState.updateLogSearchQuery('');
+                          },
+                        ),
+                ),
+              ),
+            if (hasContent) const SizedBox(height: 12),
             Container(
               height: contentHeight,
               decoration: BoxDecoration(
@@ -1003,6 +1582,19 @@ class _DecryptorScreenState extends State<DecryptorScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _copyToClipboard(
+    BuildContext context,
+    String text,
+    String successMessage,
+  ) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage), duration: const Duration(seconds: 2)),
+      );
+    }
   }
 
   Widget _buildDbTableContentCard(BuildContext context, AppState appState) {
@@ -1034,7 +1626,35 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                     ),
                   ),
                 ),
-                if (hasTableSelection)
+                if (hasTableSelection) ...[
+                  IconButton(
+                    tooltip: 'Copy rows as CSV',
+                    icon: const Icon(Icons.copy, size: 18),
+                    onPressed: () => _copyToClipboard(
+                      context,
+                      DatabaseService.exportToCsv(
+                        appState.filteredDbColumns,
+                        appState.filteredDbRows,
+                      ),
+                      'Table data copied as CSV',
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: _showSchemaPanel ? 'Hide schema' : 'Show schema',
+                    icon: Icon(
+                      _showSchemaPanel
+                          ? Icons.schema_rounded
+                          : Icons.table_chart_outlined,
+                      size: 18,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _showSchemaPanel = !_showSchemaPanel;
+                      });
+                    },
+                  ),
+                  _buildExportMenu(context, appState),
+                  const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -1045,7 +1665,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: Text(
-                      '${appState.dbRows.length} rows',
+                      '${appState.filteredDbRows.length} / ${appState.dbRows.length} rows',
                       style: TextStyle(
                         color: colorScheme.primary,
                         fontSize: 11.8,
@@ -1053,6 +1673,7 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                       ),
                     ),
                   ),
+                ],
                 IconButton(
                   tooltip: _isDbTableViewExpanded
                       ? 'Collapse table view'
@@ -1071,6 +1692,27 @@ class _DecryptorScreenState extends State<DecryptorScreen>
               ],
             ),
             const SizedBox(height: 12),
+            if (hasTableSelection) ...[
+              TextField(
+                controller: _dbRowSearchController,
+                onChanged: appState.updateDbRowSearchQuery,
+                decoration: InputDecoration(
+                  labelText: 'Filter rows or columns',
+                  hintText: 'Search...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: appState.dbRowSearchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _dbRowSearchController.clear();
+                            appState.updateDbRowSearchQuery('');
+                          },
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (!hasTableSelection)
               _buildDbContentHint(
                 context,
@@ -1113,12 +1755,12 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                         child: SingleChildScrollView(
                           controller: _dbVerticalScrollController,
                           child: DataTable(
-                            columns: appState.dbColumns
+                            columns: appState.filteredDbColumns
                                 .map(
                                   (column) => DataColumn(label: Text(column)),
                                 )
                                 .toList(),
-                            rows: appState.dbRows
+                            rows: appState.filteredDbRows
                                 .map(
                                   (row) => DataRow(
                                     cells: row
@@ -1142,8 +1784,112 @@ class _DecryptorScreenState extends State<DecryptorScreen>
                   ),
                 ),
               ),
+            if (hasTableSelection && _showSchemaPanel) ...[
+              const SizedBox(height: 16),
+              _buildSchemaPanel(context, appState),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildExportMenu(BuildContext context, AppState appState) {
+    final tableName = appState.selectedDbTable ?? 'query_result';
+    final columns = appState.filteredDbColumns;
+    final rows = appState.filteredDbRows;
+
+    return PopupMenuButton<String>(
+      tooltip: 'Export table',
+      icon: const Icon(Icons.download, size: 18),
+      onSelected: (format) => appState.exportDbResults(
+        columns: columns,
+        rows: rows,
+        tableName: tableName,
+        format: format,
+      ),
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: 'csv', child: Text('Export as CSV')),
+        PopupMenuItem(value: 'json', child: Text('Export as JSON')),
+        PopupMenuItem(value: 'sql', child: Text('Export as SQL INSERTs')),
+      ],
+    );
+  }
+
+  Widget _buildSchemaPanel(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final schema = appState.tableSchema;
+
+    if (schema == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Schema',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (schema.ddl.isNotEmpty) ...[
+            SelectableText(
+              schema.ddl,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (schema.indexes.isNotEmpty) ...[
+            Text(
+              'Indexes',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...schema.indexes.map(
+              (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: SelectableText(
+                  index['sql'] ?? index['name'] ?? '',
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (schema.foreignKeys.isNotEmpty) ...[
+            Text(
+              'Foreign Keys',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...schema.foreignKeys.map(
+              (fk) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: SelectableText(
+                  '${fk['from']} → ${fk['table']}.${fk['to']}',
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

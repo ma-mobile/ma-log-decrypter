@@ -4,11 +4,13 @@ import 'package:crypto/crypto.dart';
 import 'package:pointycastle/asymmetric/api.dart';
 import 'dart:convert';
 
-enum EncryptionMode { aesGcm, aesCbcPkcs7, rsaChunkedBase64 }
+enum EncryptionMode { autoDetect, aesGcm, aesCbcPkcs7, rsaChunkedBase64 }
 
 extension EncryptionModeLabel on EncryptionMode {
   String get label {
     switch (this) {
+      case EncryptionMode.autoDetect:
+        return 'Auto-detect (AES-GCM / AES-CBC)';
       case EncryptionMode.aesGcm:
         return 'AES-GCM';
       case EncryptionMode.aesCbcPkcs7:
@@ -39,10 +41,28 @@ class EncryptionService {
         return _decryptAesGcm(encryptedData, password);
       case EncryptionMode.aesCbcPkcs7:
         return _decryptAesCbc(encryptedData, password);
+      case EncryptionMode.autoDetect:
+        return _decryptAutoDetect(encryptedData, password);
       case EncryptionMode.rsaChunkedBase64:
         throw Exception(
           'RSA mode requires a private key. Use decryptRsaChunkedData().',
         );
+    }
+  }
+
+  static Uint8List _decryptAutoDetect(Uint8List encryptedData, String password) {
+    String firstError = '';
+    try {
+      return _decryptAesGcm(encryptedData, password);
+    } catch (e) {
+      firstError = e.toString();
+    }
+    try {
+      return _decryptAesCbc(encryptedData, password);
+    } catch (e) {
+      throw Exception(
+        'Auto-detection failed. GCM error: $firstError; CBC error: $e',
+      );
     }
   }
 
@@ -135,6 +155,7 @@ class EncryptionService {
       case EncryptionMode.aesGcm:
         return _encryptAesGcm(plainData, password);
       case EncryptionMode.aesCbcPkcs7:
+      case EncryptionMode.autoDetect:
         return _encryptAesCbc(plainData, password);
       case EncryptionMode.rsaChunkedBase64:
         throw Exception('RSA chunked encryption is not supported in this tool.');

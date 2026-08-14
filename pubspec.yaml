@@ -51,6 +51,16 @@ dependencies:
   
   # Windows native integration
   file: ^7.0.1
+  
+  # Desktop UX
+  desktop_drop: ^0.5.0
+  window_manager: ^0.4.3
+  
+  # Persistence
+  shared_preferences: ^2.5.0
+  
+  # Export formatting
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
