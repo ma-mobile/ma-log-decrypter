@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:get/get.dart';
 import 'package:window_manager/window_manager.dart';
-import 'providers/app_state.dart';
-import 'providers/theme_provider.dart';
+import 'controller/decryptor_controller.dart';
+import 'controller/theme_provider.dart';
 import 'screens/decryptor_screen.dart';
 import 'services/settings_service.dart';
 
@@ -37,15 +37,10 @@ void main() async {
     await windowManager.focus();
   });
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()..loadTheme()),
-        ChangeNotifierProvider(create: (_) => AppState()),
-      ],
-      child: const WindowBoundsListener(child: MyApp()),
-    ),
-  );
+  Get.put(ThemeController());
+  Get.put(DecryptorController());
+
+  runApp(const WindowBoundsListener(child: MyApp()));
 }
 
 class WindowBoundsListener extends StatefulWidget {
@@ -163,15 +158,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    return MaterialApp(
-      title: 'Log File Decryptor',
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
-      themeMode: themeProvider.themeMode,
-      home: const DecryptorScreen(),
-      debugShowCheckedModeBanner: false,
+    return GetBuilder<ThemeController>(
+      builder: (controller) => GetMaterialApp(
+        title: 'Log File Decryptor',
+        theme: _buildTheme(Brightness.light),
+        darkTheme: _buildTheme(Brightness.dark),
+        themeMode: controller.themeMode,
+        home: const DecryptorScreen(),
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }

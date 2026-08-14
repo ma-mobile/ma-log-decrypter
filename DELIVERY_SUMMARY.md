@@ -59,7 +59,7 @@ A **complete, production-ready Flutter Desktop application** for Windows that de
 C:\log_decryptor/
 ├── 📱 Application Code (lib/)
 │   ├── main.dart                      [Entry point - 839 bytes]
-│   ├── providers/
+│   ├── controller/
 │   │   └── app_state.dart            [State management - 3.5 KB]
 │   ├── screens/
 │   │   └── decryptor_screen.dart     [Main UI - 9.2 KB]
@@ -428,7 +428,7 @@ Start with: `C:\log_decryptor\GETTING_STARTED.md`
 1. Open `lib/main.dart` - entry point
 2. Review `lib/services/` - core logic
 3. Explore `lib/screens/` - UI implementation
-4. Check `lib/providers/` - state management
+4. Check `lib/controller/` - state management
 
 ### Understanding Deployment
 1. Read `DEPLOYMENT.md` for distribution

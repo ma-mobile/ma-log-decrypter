@@ -2,10 +2,10 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:get/get.dart';
 import '../main.dart';
-import '../providers/app_state.dart';
-import '../providers/theme_provider.dart';
+import '../controller/decryptor_controller.dart';
+import '../controller/theme_provider.dart';
 import '../services/database_service.dart';
 import '../services/encryption_service.dart';
 import '../services/file_service.dart';
@@ -64,7 +64,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
   Future<void> _handleDroppedFiles(List<DropItem> files) async {
     if (files.isEmpty) return;
 
-    final appState = Provider.of<AppState>(context, listen: false);
+    final appState = Get.find<DecryptorController>();
     final first = files.first;
     final path = first.path;
 
@@ -167,7 +167,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
 
   Widget _buildSidebar(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = Get.find<ThemeController>();
     final isExtended = MediaQuery.of(context).size.width >= 1000;
 
     return NavigationRail(
@@ -238,8 +238,8 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
   }
 
   Widget _buildMainContent(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, _) {
+    return GetBuilder<DecryptorController>(
+      builder: (appState) {
         if (_selectedMode == _ToolMode.decryptor) {
           _decryptedContentController.text =
               appState.filteredDecryptedContent;
@@ -392,7 +392,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildControlPanel(BuildContext context, AppState appState) {
+  Widget _buildControlPanel(BuildContext context, DecryptorController appState) {
     return Column(
       children: [
         _buildFileSection(context, appState),
@@ -412,7 +412,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
 
   Widget _buildRecentItemsSection(
     BuildContext context,
-    AppState appState,
+    DecryptorController appState,
     RecentItemType type,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -483,7 +483,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildBatchPanel(BuildContext context, AppState appState) {
+  Widget _buildBatchPanel(BuildContext context, DecryptorController appState) {
     return Column(
       children: [
         _buildPasswordSection(context, appState),
@@ -493,7 +493,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildBatchSection(BuildContext context, AppState appState) {
+  Widget _buildBatchSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final hasFiles = appState.hasBatchFiles;
     final hasResults = appState.hasBatchResults;
@@ -584,7 +584,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                       ? null
                       : () => appState.decryptBatch(),
                   icon: const Icon(Icons.lock_open_rounded),
-                  label: const Text('Decrypt All'),
+                  label: const Text('Decrypt All',style: TextStyle(fontWeight: FontWeight.bold),),
                 ),
               ),
             ],
@@ -609,7 +609,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildBatchStatusSection(BuildContext context, AppState appState) {
+  Widget _buildBatchStatusSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final isError = appState.batchErrorMessage.isNotEmpty;
 
@@ -648,7 +648,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildBatchResultsSection(BuildContext context, AppState appState) {
+  Widget _buildBatchResultsSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -695,7 +695,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildDbViewerPanel(BuildContext context, AppState appState) {
+  Widget _buildDbViewerPanel(BuildContext context, DecryptorController appState) {
     return Column(
       children: [
         _buildDbFileSection(context, appState),
@@ -714,7 +714,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildSqlQuerySection(BuildContext context, AppState appState) {
+  Widget _buildSqlQuerySection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final hasResult = appState.sqlQueryResult != null;
 
@@ -848,7 +848,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildSqlStatusSection(BuildContext context, AppState appState) {
+  Widget _buildSqlStatusSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final isError = appState.sqlErrorMessage.isNotEmpty;
 
@@ -887,7 +887,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildDbFileSection(BuildContext context, AppState appState) {
+  Widget _buildDbFileSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -966,7 +966,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildDbTableListSection(BuildContext context, AppState appState) {
+  Widget _buildDbTableListSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final filteredTables = appState.filteredDbTables;
     if (_dbTableSearchController.text != appState.dbTableSearchQuery) {
@@ -1086,7 +1086,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildDbStatusSection(BuildContext context, AppState appState) {
+  Widget _buildDbStatusSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final isError = appState.dbErrorMessage.isNotEmpty;
 
@@ -1124,7 +1124,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildFileSection(BuildContext context, AppState appState) {
+  Widget _buildFileSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -1203,7 +1203,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildPasswordSection(BuildContext context, AppState appState) {
+  Widget _buildPasswordSection(BuildContext context, DecryptorController appState) {
     final isRsaMode =
         appState.encryptionMode == EncryptionMode.rsaChunkedBase64;
 
@@ -1278,7 +1278,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildRsaKeySection(AppState appState) {
+  Widget _buildRsaKeySection(DecryptorController appState) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1308,7 +1308,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildButtonsSection(BuildContext context, AppState appState) {
+  Widget _buildButtonsSection(BuildContext context, DecryptorController appState) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -1344,7 +1344,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Future<void> _handleSaveAs(BuildContext context, AppState appState) async {
+  Future<void> _handleSaveAs(BuildContext context, DecryptorController appState) async {
     final choice = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
@@ -1425,7 +1425,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     await appState.saveDecryptedContent(suggestedFileName: suggestedFileName);
   }
 
-  Widget _buildStatusSection(BuildContext context, AppState appState) {
+  Widget _buildStatusSection(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final isError = appState.errorMessage.isNotEmpty;
 
@@ -1463,7 +1463,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildContentCard(BuildContext context, AppState appState) {
+  Widget _buildContentCard(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final viewportHeight = MediaQuery.of(context).size.height;
     final contentHeight = viewportHeight < 760 ? 300.0 : 430.0;
@@ -1578,7 +1578,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     }
   }
 
-  Widget _buildDbTableContentCard(BuildContext context, AppState appState) {
+  Widget _buildDbTableContentCard(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final hasTableSelection = appState.selectedDbTable != null;
     final hasColumns = appState.dbColumns.isNotEmpty;
@@ -1777,7 +1777,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildExportMenu(BuildContext context, AppState appState) {
+  Widget _buildExportMenu(BuildContext context, DecryptorController appState) {
     final tableName = appState.selectedDbTable ?? 'query_result';
     final columns = appState.filteredDbColumns;
     final rows = appState.filteredDbRows;
@@ -1799,7 +1799,7 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
-  Widget _buildSchemaPanel(BuildContext context, AppState appState) {
+  Widget _buildSchemaPanel(BuildContext context, DecryptorController appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final schema = appState.tableSchema;
 

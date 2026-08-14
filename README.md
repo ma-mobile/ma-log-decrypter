@@ -167,7 +167,7 @@ Uint8List deriveKey(String password) {
 log_decryptor/
 ├── lib/
 │   ├── main.dart                 # Application entry point, theme, window bounds
-│   ├── providers/
+│   ├── controller/
 │   │   ├── app_state.dart        # State management
 │   │   └── theme_provider.dart   # Theme mode management
 │   ├── screens/

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../services/settings_service.dart';
 
-class ThemeProvider extends ChangeNotifier {
+class ThemeController extends GetxController {
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
@@ -13,17 +14,23 @@ class ThemeProvider extends ChangeNotifier {
         Brightness.dark;
   }
 
+  @override
+  void onInit() {
+    super.onInit();
+    loadTheme();
+  }
+
   Future<void> loadTheme() async {
     final saved = await SettingsService.loadThemeMode();
     _themeMode = _parseThemeMode(saved);
-    notifyListeners();
+    update();
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
     if (_themeMode == mode) return;
     _themeMode = mode;
     await SettingsService.saveThemeMode(mode.name);
-    notifyListeners();
+    update();
   }
 
   Future<void> toggleTheme(BuildContext context) async {

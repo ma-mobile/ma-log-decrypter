@@ -63,7 +63,7 @@ C:\log_decryptor/
 │   ├── services/
 │   │   ├── encryption_service.dart    ← Decryption logic
 │   │   └── file_service.dart          ← File I/O
-│   ├── providers/
+│   ├── controller/
 │   │   └── app_state.dart             ← State management
 │   └── utils/
 │       └── encrypt_test_file.dart     ← Test file generator

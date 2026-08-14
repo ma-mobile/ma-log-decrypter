@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import '../services/database_service.dart';
 import '../services/encryption_service.dart';
 import '../services/file_service.dart';
@@ -23,7 +23,7 @@ class BatchResult {
   bool get success => error == null && outputPath != null;
 }
 
-class AppState extends ChangeNotifier {
+class DecryptorController extends GetxController {
   static const String _bundledRsaPrivateKeyPath =
       'keys/private_key_decrypted.pem';
   File? _selectedFile;
@@ -58,7 +58,7 @@ class AppState extends ChangeNotifier {
   bool _isBatchRunning = false;
   String _batchOutputFolder = '';
 
-  AppState() {
+  DecryptorController() {
     _loadRecentItems();
   }
 
@@ -141,7 +141,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadRecentItems() async {
     _recentItems = await SettingsService.loadRecentItems();
-    notifyListeners();
+    update();
   }
 
   Future<void> _addRecentLogFile(String path) async {
@@ -152,7 +152,7 @@ class AppState extends ChangeNotifier {
     );
     await SettingsService.addRecentItem(item);
     _recentItems = await SettingsService.loadRecentItems();
-    notifyListeners();
+    update();
   }
 
   Future<void> _addRecentDbFile(String path) async {
@@ -163,13 +163,13 @@ class AppState extends ChangeNotifier {
     );
     await SettingsService.addRecentItem(item);
     _recentItems = await SettingsService.loadRecentItems();
-    notifyListeners();
+    update();
   }
 
   Future<void> removeRecentItem(String path) async {
     await SettingsService.removeRecentItem(path);
     _recentItems = await SettingsService.loadRecentItems();
-    notifyListeners();
+    update();
   }
 
   Future<void> openFileByPath(String path, {bool isDb = false}) async {
@@ -180,7 +180,7 @@ class AppState extends ChangeNotifier {
       } else {
         _errorMessage = 'File not found: $path';
       }
-      notifyListeners();
+      update();
       return;
     }
 
@@ -192,7 +192,7 @@ class AppState extends ChangeNotifier {
       _status = 'File selected: ${FileService.getFileName(file.path)}';
       _errorMessage = '';
       await _addRecentLogFile(file.path);
-      notifyListeners();
+      update();
     }
   }
 
@@ -201,7 +201,7 @@ class AppState extends ChangeNotifier {
     try {
       _errorMessage = '';
       _status = 'Selecting file...';
-      notifyListeners();
+      update();
 
       final file = await FileService.pickEncryptedFile();
       if (file != null) {
@@ -215,21 +215,21 @@ class AppState extends ChangeNotifier {
       _errorMessage = e.toString();
       _status = '';
     }
-    notifyListeners();
+    update();
   }
 
   /// Update password
   void updatePassword(String newPassword) {
     _password = newPassword;
     _errorMessage = '';
-    notifyListeners();
+    update();
   }
 
   /// Update encryption mode used for decryption
   void updateEncryptionMode(EncryptionMode mode) {
     _encryptionMode = mode;
     _errorMessage = '';
-    notifyListeners();
+    update();
   }
 
   /// Select RSA private key file (PEM)
@@ -237,7 +237,7 @@ class AppState extends ChangeNotifier {
     try {
       _errorMessage = '';
       _status = 'Selecting private key...';
-      notifyListeners();
+      update();
 
       final file = await FileService.pickPrivateKeyFile();
       if (file != null) {
@@ -250,21 +250,21 @@ class AppState extends ChangeNotifier {
       _errorMessage = e.toString();
       _status = '';
     }
-    notifyListeners();
+    update();
   }
 
   /// Decrypt the selected file
   Future<void> decryptFile() async {
     if (_selectedFile == null) {
       _errorMessage = 'Please select a file first';
-      notifyListeners();
+      update();
       return;
     }
 
     if (_encryptionMode != EncryptionMode.rsaChunkedBase64) {
       if (_password.trim().isEmpty) {
         _errorMessage = 'Please enter a password';
-        notifyListeners();
+        update();
         return;
       }
     }
@@ -273,7 +273,7 @@ class AppState extends ChangeNotifier {
       _isLoading = true;
       _errorMessage = '';
       _status = 'Decrypting file...';
-      notifyListeners();
+      update();
 
       // Read file
       final encryptedBytes = await FileService.readFileAsBytes(_selectedFile!);
@@ -305,7 +305,7 @@ class AppState extends ChangeNotifier {
       _status = '';
     } finally {
       _isLoading = false;
-      notifyListeners();
+      update();
     }
   }
 
@@ -328,7 +328,7 @@ class AppState extends ChangeNotifier {
   Future<void> saveDecryptedContent({String? suggestedFileName}) async {
     if (_decryptedContent.isEmpty) {
       _errorMessage = 'No decrypted content to save';
-      notifyListeners();
+      update();
       return;
     }
 
@@ -336,7 +336,7 @@ class AppState extends ChangeNotifier {
       _isLoading = true;
       _errorMessage = '';
       _status = 'Saving file...';
-      notifyListeners();
+      update();
 
       final filePath = await FileService.saveDecryptedFile(
         _decryptedContent,
@@ -348,7 +348,7 @@ class AppState extends ChangeNotifier {
       _status = '';
     } finally {
       _isLoading = false;
-      notifyListeners();
+      update();
     }
   }
 
@@ -376,7 +376,7 @@ class AppState extends ChangeNotifier {
     _sqlStatus = '';
     _sqlErrorMessage = '';
     _tableSchema = null;
-    notifyListeners();
+    update();
   }
 
   /// Clear only selected file and current decryption result
@@ -385,7 +385,7 @@ class AppState extends ChangeNotifier {
     _decryptedContent = '';
     _status = '';
     _errorMessage = '';
-    notifyListeners();
+    update();
   }
 
   /// Clear decrypted content and status
@@ -393,14 +393,14 @@ class AppState extends ChangeNotifier {
     _decryptedContent = '';
     _status = '';
     _errorMessage = '';
-    notifyListeners();
+    update();
   }
 
   Future<void> selectBatchFiles() async {
     try {
       _batchErrorMessage = '';
       _batchStatus = 'Selecting files...';
-      notifyListeners();
+      update();
 
       final files = await FileService.pickEncryptedFiles();
       if (files.isNotEmpty) {
@@ -418,24 +418,24 @@ class AppState extends ChangeNotifier {
       _batchErrorMessage = e.toString();
       _batchStatus = '';
     }
-    notifyListeners();
+    update();
   }
 
   Future<void> selectBatchFolder() async {
     try {
       _batchErrorMessage = '';
       _batchStatus = 'Selecting folder...';
-      notifyListeners();
+      update();
 
       final directory = await FileService.pickEncryptedFolder();
       if (directory == null) {
         _batchStatus = '';
-        notifyListeners();
+        update();
         return;
       }
 
       _batchStatus = 'Scanning folder...';
-      notifyListeners();
+      update();
 
       final files = await FileService.findEncryptedFiles(directory);
       if (files.isNotEmpty) {
@@ -455,19 +455,19 @@ class AppState extends ChangeNotifier {
       _batchErrorMessage = e.toString();
       _batchStatus = '';
     }
-    notifyListeners();
+    update();
   }
 
   Future<void> setBatchOutputFolder() async {
     try {
       _batchErrorMessage = '';
       _batchStatus = 'Selecting output folder...';
-      notifyListeners();
+      update();
 
       final directory = await FileService.pickEncryptedFolder();
       if (directory == null) {
         _batchStatus = '';
-        notifyListeners();
+        update();
         return;
       }
 
@@ -477,20 +477,20 @@ class AppState extends ChangeNotifier {
       _batchErrorMessage = e.toString();
       _batchStatus = '';
     }
-    notifyListeners();
+    update();
   }
 
   Future<void> decryptBatch() async {
     if (_batchFiles.isEmpty) {
       _batchErrorMessage = 'Please select files or a folder first';
-      notifyListeners();
+      update();
       return;
     }
 
     if (_encryptionMode != EncryptionMode.rsaChunkedBase64) {
       if (_password.trim().isEmpty) {
         _batchErrorMessage = 'Please enter a password';
-        notifyListeners();
+        update();
         return;
       }
     }
@@ -499,7 +499,7 @@ class AppState extends ChangeNotifier {
     _batchResults = [];
     _batchErrorMessage = '';
     _batchStatus = 'Starting batch decryption...';
-    notifyListeners();
+    update();
 
     String? privateKeyPem;
     if (_encryptionMode == EncryptionMode.rsaChunkedBase64) {
@@ -509,7 +509,7 @@ class AppState extends ChangeNotifier {
         _batchErrorMessage = e.toString();
         _batchStatus = '';
         _isBatchRunning = false;
-        notifyListeners();
+        update();
         return;
       }
     }
@@ -524,7 +524,7 @@ class AppState extends ChangeNotifier {
       final stopwatch = Stopwatch()..start();
       _batchStatus =
           'Decrypting ${i + 1} / ${_batchFiles.length}: ${FileService.getFileName(file.path)}';
-      notifyListeners();
+      update();
 
       try {
         final encryptedBytes = await FileService.readFileAsBytes(file);
@@ -574,7 +574,7 @@ class AppState extends ChangeNotifier {
     _batchStatus =
         'Batch complete: $successCount / ${results.length} files decrypted';
     _isBatchRunning = false;
-    notifyListeners();
+    update();
   }
 
   void clearBatch() {
@@ -584,7 +584,7 @@ class AppState extends ChangeNotifier {
     _batchErrorMessage = '';
     _isBatchRunning = false;
     _batchOutputFolder = '';
-    notifyListeners();
+    update();
   }
 
   Future<void> selectDatabaseFile() async {
@@ -592,13 +592,13 @@ class AppState extends ChangeNotifier {
       _isDbLoading = true;
       _dbErrorMessage = '';
       _dbStatus = 'Selecting database file...';
-      notifyListeners();
+      update();
 
       final file = await FileService.pickDatabaseFile();
       if (file == null) {
         _dbStatus = '';
         _isDbLoading = false;
-        notifyListeners();
+        update();
         return;
       }
 
@@ -607,7 +607,7 @@ class AppState extends ChangeNotifier {
       _dbErrorMessage = 'Failed to load database: $e';
       _dbStatus = '';
       _isDbLoading = false;
-      notifyListeners();
+      update();
     }
   }
 
@@ -616,7 +616,7 @@ class AppState extends ChangeNotifier {
     _dbStatus =
         'Loading tables from ${FileService.getFileName(file.path)}...';
     _dbErrorMessage = '';
-    notifyListeners();
+    update();
 
     _dbTables = DatabaseService.listTables(file);
     _dbTableSearchQuery = '';
@@ -627,13 +627,13 @@ class AppState extends ChangeNotifier {
         'Database loaded (${_dbTables.length} table${_dbTables.length == 1 ? '' : 's'})';
     await _addRecentDbFile(file.path);
     _isDbLoading = false;
-    notifyListeners();
+    update();
   }
 
   Future<void> selectDatabaseTable(String tableName) async {
     if (_selectedDbFile == null) {
       _dbErrorMessage = 'Please upload a database file first';
-      notifyListeners();
+      update();
       return;
     }
 
@@ -642,7 +642,7 @@ class AppState extends ChangeNotifier {
       _dbErrorMessage = '';
       _selectedDbTable = tableName;
       _dbStatus = 'Loading rows from "$tableName"...';
-      notifyListeners();
+      update();
 
       final tableData = DatabaseService.readTable(_selectedDbFile!, tableName);
       _dbColumns = tableData.columns;
@@ -657,7 +657,7 @@ class AppState extends ChangeNotifier {
       _dbStatus = '';
     } finally {
       _isDbLoading = false;
-      notifyListeners();
+      update();
     }
   }
 
@@ -672,39 +672,39 @@ class AppState extends ChangeNotifier {
     _dbErrorMessage = '';
     _isDbLoading = false;
     _tableSchema = null;
-    notifyListeners();
+    update();
   }
 
   void updateDbTableSearchQuery(String query) {
     _dbTableSearchQuery = query;
-    notifyListeners();
+    update();
   }
 
   void updateLogSearchQuery(String query) {
     _logSearchQuery = query;
-    notifyListeners();
+    update();
   }
 
   void updateDbRowSearchQuery(String query) {
     _dbRowSearchQuery = query;
-    notifyListeners();
+    update();
   }
 
   void updateSqlQuery(String query) {
     _sqlQuery = query;
-    notifyListeners();
+    update();
   }
 
   Future<void> executeSqlQuery() async {
     if (_selectedDbFile == null) {
       _sqlErrorMessage = 'Please upload a database file first';
-      notifyListeners();
+      update();
       return;
     }
 
     if (_sqlQuery.trim().isEmpty) {
       _sqlErrorMessage = 'Please enter a SQL query';
-      notifyListeners();
+      update();
       return;
     }
 
@@ -712,7 +712,7 @@ class AppState extends ChangeNotifier {
       _isDbLoading = true;
       _sqlErrorMessage = '';
       _sqlStatus = 'Executing query...';
-      notifyListeners();
+      update();
 
       final result = DatabaseService.executeQuery(_selectedDbFile!, _sqlQuery);
       _sqlQueryResult = result;
@@ -723,7 +723,7 @@ class AppState extends ChangeNotifier {
       _sqlStatus = '';
     } finally {
       _isDbLoading = false;
-      notifyListeners();
+      update();
     }
   }
 
@@ -735,7 +735,7 @@ class AppState extends ChangeNotifier {
   }) async {
     if (columns.isEmpty) {
       _dbErrorMessage = 'No data to export';
-      notifyListeners();
+      update();
       return;
     }
 
@@ -743,7 +743,7 @@ class AppState extends ChangeNotifier {
       _isDbLoading = true;
       _dbErrorMessage = '';
       _dbStatus = 'Exporting...';
-      notifyListeners();
+      update();
 
       late final String content;
       late final String extension;
@@ -780,7 +780,7 @@ class AppState extends ChangeNotifier {
       _dbStatus = '';
     } finally {
       _isDbLoading = false;
-      notifyListeners();
+      update();
     }
   }
 }

@@ -464,7 +464,7 @@ Write-Host "✓ Build complete: $output"
 C:\log_decryptor\
 ├── lib/
 │   ├── main.dart
-│   ├── providers/
+│   ├── controller/
 │   │   └── app_state.dart
 │   ├── screens/
 │   │   └── decryptor_screen.dart
