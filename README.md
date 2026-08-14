@@ -1,6 +1,6 @@
 # Log File Decryptor - Flutter Desktop Application
 
-A production-ready Flutter Desktop application for Windows that decrypts encrypted log files using the same encryption algorithm as the mobile app.
+A production-ready Flutter Desktop application for Windows and macOS that decrypts encrypted log files using the same encryption algorithm as the mobile app.
 
 ## Features
 
@@ -24,9 +24,11 @@ A production-ready Flutter Desktop application for Windows that decrypts encrypt
 
 ## System Requirements
 
-- Windows 10 or later
+- Windows 10 or later, **or**
+- macOS 11 (Big Sur) or later
 - Flutter SDK (^3.12.2)
 - Dart SDK (included with Flutter)
+- Xcode 14 or later (macOS builds only)
 
 ## Installation
 
@@ -43,18 +45,32 @@ A production-ready Flutter Desktop application for Windows that decrypts encrypt
    ```
 
 3. Run the application:
+
+   **Windows:**
    ```bash
    flutter run -d windows
    ```
 
+   **macOS:**
+   ```bash
+   flutter run -d macos
+   ```
+
 ### Method 2: Use Pre-built Executable
 
-The application has been built as a release executable at:
+The Windows executable is built at:
 ```
 C:\log_decryptor\build\windows\x64\runner\Release\log_decryptor.exe
 ```
 
-Simply double-click to launch the application.
+On macOS, build the `.app` bundle:
+```bash
+flutter build macos --release
+```
+The output is located at:
+```
+build/macos/Build/Products/Release/log_decryptor.app
+```
 
 ## Usage
 
@@ -236,7 +252,7 @@ To test the application with a custom encrypted file, use the encryption service
 
 ## Building for Distribution
 
-To create a standalone executable:
+### Windows
 
 ```bash
 flutter build windows --release
@@ -246,6 +262,19 @@ The executable will be located at:
 ```
 build/windows/x64/runner/Release/log_decryptor.exe
 ```
+
+### macOS
+
+```bash
+flutter build macos --release
+```
+
+The `.app` bundle will be located at:
+```
+build/macos/Build/Products/Release/log_decryptor.app
+```
+
+To create a distributable `.dmg` or signed `.app`, use Xcode or a packaging tool such as `create-dmg`.
 
 You can package this with an installer or distribute directly.
 
@@ -266,8 +295,14 @@ After making code changes:
 
 ### Building Debug Version
 
+**Windows:**
 ```bash
 flutter build windows
+```
+
+**macOS:**
+```bash
+flutter build macos
 ```
 
 ## Performance

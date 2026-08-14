@@ -76,9 +76,10 @@ C:\log_decryptor/
 
 ## 🛠️ System Requirements
 
-- **Windows 10** or newer (64-bit)
+- **Windows 10** or newer (64-bit), **or**
+- **macOS 11 (Big Sur)** or newer
 - **250 MB** free disk space
-- No additional software required
+- No additional software required for end users
 
 ## ✨ Key Features
 
@@ -94,14 +95,23 @@ C:\log_decryptor/
 
 ### Run in Development Mode
 
+**Windows:**
 ```powershell
 cd C:\log_decryptor
 flutter pub get
 flutter run -d windows
 ```
 
+**macOS:**
+```bash
+cd /path/to/log_decryptor
+flutter pub get
+flutter run -d macos
+```
+
 ### Build Release Version
 
+**Windows:**
 ```powershell
 cd C:\log_decryptor
 flutter clean
@@ -110,6 +120,16 @@ flutter build windows --release
 ```
 
 **Output**: `build\windows\x64\runner\Release\log_decryptor.exe`
+
+**macOS:**
+```bash
+cd /path/to/log_decryptor
+flutter clean
+flutter pub get
+flutter build macos
+```
+
+**Output**: `build/macos/Build/Products/Release/log_decryptor.app`
 
 ### Generate Test File
 

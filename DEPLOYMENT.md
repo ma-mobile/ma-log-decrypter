@@ -21,9 +21,9 @@
 
 ### Prerequisites
 
-- **Windows 10/11** (64-bit recommended)
+- **Windows 10/11** (64-bit recommended) **or** **macOS 11+**
 - **Flutter SDK**: https://flutter.dev/docs/get-started/install
-- **Visual Studio Build Tools** (installed with Flutter)
+- **Visual Studio Build Tools** (Windows) or **Xcode 14+** (macOS)
 - **Git** (optional, for version control)
 
 ### Installation Steps
@@ -77,7 +77,7 @@ flutter run -d windows
 
 ## Building for Distribution
 
-### Standard Release Build
+### Standard Release Build — Windows
 
 ```powershell
 cd C:\log_decryptor
@@ -94,6 +94,25 @@ flutter build windows --release
 
 **Output**: `build\windows\x64\runner\Release\log_decryptor.exe`
 
+### Standard Release Build — macOS
+
+```bash
+cd /path/to/log_decryptor
+
+# Clean previous builds
+flutter clean
+
+# Get latest dependencies
+flutter pub get
+
+# Build release version
+flutter build macos
+```
+
+**Output**: `build/macos/Build/Products/Release/log_decryptor.app`
+
+For distribution, sign the `.app` with your Apple Developer ID and optionally package it as a `.dmg` using `create-dmg` or Disk Utility.
+
 ### Build Configuration
 
 | Parameter | Value |
@@ -106,13 +125,13 @@ flutter build windows --release
 
 ### Distribution Checklist
 
-- [ ] Run `flutter build windows --release`
-- [ ] Test executable on clean Windows machine
+- [ ] Run `flutter build windows --release` (Windows) or `flutter build macos` (macOS)
+- [ ] Test executable on a clean machine
 - [ ] Verify all dependencies work
 - [ ] Check file size (~200MB)
 - [ ] Test with sample encrypted files
 - [ ] Verify save functionality
-- [ ] Test on different Windows versions
+- [ ] Test on the target operating system version(s)
 
 ---
 
