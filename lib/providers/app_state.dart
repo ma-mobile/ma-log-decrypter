@@ -122,7 +122,7 @@ class AppState extends ChangeNotifier {
     }
 
     if (_encryptionMode != EncryptionMode.rsaChunkedBase64) {
-      if (_password.isEmpty) {
+      if (_password.trim().isEmpty) {
         _errorMessage = 'Please enter a password';
         notifyListeners();
         return;
@@ -149,7 +149,7 @@ class AppState extends ChangeNotifier {
       } else {
         decryptedBytes = EncryptionService.decryptData(
           encryptedBytes,
-          _password,
+          _password.trim(),
           _encryptionMode,
         );
       }
