@@ -96,20 +96,37 @@ class _WindowBoundsListenerState extends State<WindowBoundsListener>
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  static const Color _primaryGreen = Color(0xFF0F5D55);
+  /// Eye-comfort primary color: Soft teal with reduced saturation
+  static const Color _primaryTeal = Color(0xFF1B7A74);
+
+  /// Eye-comfort light background: Warm white with slight green tint
+  static const Color _lightBackground = Color(0xFFF7FBFA);
+
+  /// Eye-comfort light surface: Soft cream to reduce blue light
+  static const Color _lightSurface = Color(0xFFFAFCFB);
+
+  /// Eye-comfort dark background: Soft charcoal instead of pure black
+  static const Color _darkBackground = Color(0xFF1A1F1E);
+
+  /// Eye-comfort dark surface: Slightly lighter than background for contrast
+  static const Color _darkSurface = Color(0xFF232928);
 
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
+
+    /// Custom color scheme with eye-comfort colors
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: _primaryGreen,
+      seedColor: _primaryTeal,
       brightness: brightness,
+      /// Override high-contrast secondary for softer feel
+      surface: isDark ? _darkSurface : _lightSurface,
     );
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: isDark ? const Color(0xFF0F1515) : const Color(0xFFF4F8F8),
+      scaffoldBackgroundColor: isDark ? _darkBackground : _lightBackground,
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
@@ -121,36 +138,75 @@ class MyApp extends StatelessWidget {
         color: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: colorScheme.outlineVariant),
+          side: BorderSide(
+            color: isDark
+                ? const Color(0xFF3A4341)
+                : const Color(0xFFE0E8E7),
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        fillColor: isDark
+            ? const Color(0xFF2E3432).withValues(alpha: 0.8)
+            : const Color(0xFFF0F4F3).withValues(alpha: 0.8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderSide: BorderSide(
+            color: isDark
+                ? const Color(0xFF3A4341)
+                : const Color(0xFFDEE5E4),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderSide: BorderSide(
+            color: isDark
+                ? const Color(0xFF3A4341)
+                : const Color(0xFFDEE5E4),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+          borderSide: BorderSide(
+            color: colorScheme.primary,
+            width: 1.4,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: TextStyle(
+          color: isDark
+              ? const Color(0xFF8A9391).withValues(alpha: 0.7)
+              : const Color(0xFF7A8886).withValues(alpha: 0.7),
+        ),
       ),
-      elevatedButtonTheme: const ElevatedButtonThemeData(
+      elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
-          padding: WidgetStatePropertyAll(
+          padding: const WidgetStatePropertyAll(
             EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           ),
-          shape: WidgetStatePropertyAll(
+          shape: const WidgetStatePropertyAll(
             RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
           ),
+          backgroundColor: WidgetStatePropertyAll(colorScheme.primary),
+          foregroundColor: WidgetStatePropertyAll(colorScheme.onPrimary),
+        ),
+      ),
+      /// Soft text theme for reduced eye strain
+      textTheme: TextTheme(
+        bodyMedium: TextStyle(
+          color: isDark ? const Color(0xFFD4DDD9) : const Color(0xFF2A3230),
+          letterSpacing: 0.15,
+        ),
+        bodySmall: TextStyle(
+          color: isDark ? const Color(0xFFA0A9A6) : const Color(0xFF5F6764),
+          letterSpacing: 0.15,
+        ),
+        titleMedium: TextStyle(
+          color: isDark ? const Color(0xFFE8F0ED) : const Color(0xFF1B2220),
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -160,7 +216,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetBuilder<ThemeController>(
       builder: (controller) => GetMaterialApp(
-        title: 'Log File Decryptor',
+        title: 'LogVault - Encrypted Log Viewer',
         theme: _buildTheme(Brightness.light),
         darkTheme: _buildTheme(Brightness.dark),
         themeMode: controller.themeMode,
@@ -186,7 +242,7 @@ class TitleBar extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(
               child: Text(
-                'Log File Decryptor',
+                'LogVault - Encrypted Log Viewer',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
