@@ -1500,6 +1500,12 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'View in fullscreen',
+                    icon: const Icon(Icons.fullscreen_rounded),
+                    onPressed: () => _showFullscreenContentView(context, appState),
+                  ),
+                  const SizedBox(width: 8),
                 ],
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1915,6 +1921,18 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
+  void _showFullscreenContentView(BuildContext context, DecryptorController appState) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog.fullscreen(
+        child: _FullscreenContentModal(
+          content: appState.decryptedContent,
+        ),
+      ),
+    );
+  }
+
 }
 
 
@@ -2128,4 +2146,296 @@ class _FullscreenTableModalState extends State<_FullscreenTableModal> {
   }
 }
 
+class _FullscreenContentModal extends StatefulWidget {
+  final String content;
+
+  const _FullscreenContentModal({
+    required this.content,
+  });
+
+  @override
+  State<_FullscreenContentModal> createState() => _FullscreenContentModalState();
+}
+
+class _FullscreenContentModalState extends State<_FullscreenContentModal> {
+  late TextEditingController _searchController;
+  late ScrollController _scrollController;
+  late FocusNode _searchFocusNode;
+  late FocusNode _modalFocusNode;
+  int _matchCount = 0;
+  int _currentMatchIndex = 0;
+  final List<int> _matchPositions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _scrollController = ScrollController();
+    _searchFocusNode = FocusNode();
+    _modalFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    _searchFocusNode.dispose();
+    _modalFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    // Handle Ctrl+F to focus search
+    if (event.logicalKey == LogicalKeyboardKey.keyF && HardwareKeyboard.instance.isControlPressed) {
+      _searchFocusNode.requestFocus();
+      _searchController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _searchController.text.length,
+      );
+    }
+    // Handle Enter to go to next match
+    else if (event.logicalKey == LogicalKeyboardKey.enter && _matchCount > 0) {
+      setState(() {
+        _currentMatchIndex = (_currentMatchIndex + 1) % _matchCount;
+      });
+    }
+    // Handle Escape to close modal
+    else if (event.logicalKey == LogicalKeyboardKey.escape) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _updateMatches(String query) {
+    _matchPositions.clear();
+    _currentMatchIndex = 0;
+
+    if (query.isEmpty) {
+      setState(() => _matchCount = 0);
+      return;
+    }
+
+    final content = widget.content.toLowerCase();
+    final searchQuery = query.toLowerCase();
+    int startIndex = 0;
+
+    while (true) {
+      final index = content.indexOf(searchQuery, startIndex);
+      if (index == -1) break;
+      _matchPositions.add(index);
+      startIndex = index + 1;
+    }
+
+    setState(() => _matchCount = _matchPositions.length);
+  }
+
+  TextSpan _buildHighlightedSpans(ColorScheme colorScheme) {
+    if (_searchController.text.isEmpty || _matchPositions.isEmpty) {
+      return TextSpan(text: widget.content);
+    }
+
+    final query = _searchController.text;
+    final spans = <TextSpan>[];
+    int lastIndex = 0;
+
+    for (int i = 0; i < _matchPositions.length; i++) {
+      final matchIndex = _matchPositions[i];
+      
+      // Add non-matching text
+      if (matchIndex > lastIndex) {
+        spans.add(
+          TextSpan(
+            text: widget.content.substring(lastIndex, matchIndex),
+          ),
+        );
+      }
+
+      // Add matching text with highlight
+      final matchText = widget.content.substring(matchIndex, matchIndex + query.length);
+      
+      if (i == _currentMatchIndex) {
+        // Current match: bright background
+        spans.add(
+          TextSpan(
+            text: matchText,
+            style: TextStyle(
+              backgroundColor: colorScheme.primary,
+              color: colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      } else {
+        // Other matches: subtle background
+        spans.add(
+          TextSpan(
+            text: matchText,
+            style: TextStyle(
+              backgroundColor: colorScheme.primary.withValues(alpha: 0.3),
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      }
+      
+      lastIndex = matchIndex + query.length;
+    }
+
+    // Add remaining text
+    if (lastIndex < widget.content.length) {
+      spans.add(
+        TextSpan(
+          text: widget.content.substring(lastIndex),
+        ),
+      );
+    }
+
+    return TextSpan(children: spans);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lines = widget.content.split('\n').length;
+
+    return KeyboardListener(
+      focusNode: _modalFocusNode,
+      onKeyEvent: _handleKeyEvent,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Decrypted Content (${widget.content.length} chars, $lines lines)'),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Copy to clipboard',
+              icon: const Icon(Icons.copy, size: 18),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: widget.content)).then((_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Content copied to clipboard'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                });
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+          children: [
+            // Search bar with navigation
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    focusNode: _searchFocusNode,
+                    controller: _searchController,
+                    onChanged: _updateMatches,
+                    decoration: InputDecoration(
+                      labelText: 'Search in content (Ctrl+F)',
+                      hintText: 'Search...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                _searchController.clear();
+                                _updateMatches('');
+                              },
+                            ),
+                    ),
+                  ),
+                ),
+                if (_matchCount > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.09),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${_currentMatchIndex + 1}/$_matchCount',
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Previous match',
+                    icon: const Icon(Icons.arrow_upward),
+                    onPressed: _matchCount > 0
+                        ? () => setState(() {
+                              _currentMatchIndex =
+                                  (_currentMatchIndex - 1 + _matchCount) % _matchCount;
+                            })
+                        : null,
+                  ),
+                  IconButton(
+                    tooltip: 'Next match',
+                    icon: const Icon(Icons.arrow_downward),
+                    onPressed: _matchCount > 0
+                        ? () => setState(() {
+                              _currentMatchIndex =
+                                  (_currentMatchIndex + 1) % _matchCount;
+                            })
+                        : null,
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Content display
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.18,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Scrollbar(
+                    controller: _scrollController,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(12),
+                      child: SelectableText.rich(
+                        _buildHighlightedSpans(colorScheme),
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        ),
+      ),
+    );
+  }
+}
 
