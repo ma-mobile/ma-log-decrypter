@@ -31,7 +31,6 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
   late ScrollController _dbVerticalScrollController;
   bool _obscurePassword = true;
   _ToolMode _selectedMode = _ToolMode.decryptor;
-  bool _isDbTableViewExpanded = false;
   bool _isDraggingOver = false;
   bool _showSchemaPanel = false;
 
@@ -1589,11 +1588,8 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final hasTableSelection = appState.selectedDbTable != null;
     final hasColumns = appState.dbColumns.isNotEmpty;
-    final viewportHeight = MediaQuery.of(context).size.height;
-    final contentMinHeight = _isDbTableViewExpanded ? 480.0 : 300.0;
-    final contentMaxHeight = _isDbTableViewExpanded
-        ? viewportHeight * 0.78
-        : 460.0;
+    final contentMinHeight = 300.0;
+    final contentMaxHeight = 460.0;
 
     return Card(
       child: Padding(
@@ -1665,19 +1661,12 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
                   ),
                 ],
                 IconButton(
-                  tooltip: _isDbTableViewExpanded
-                      ? 'Collapse table view'
-                      : 'Expand table view',
+                  tooltip: 'View table in fullscreen',
                   onPressed: () {
-                    setState(() {
-                      _isDbTableViewExpanded = !_isDbTableViewExpanded;
-                    });
+                    final appState = Get.find<DecryptorController>();
+                    _showFullscreenTableView(context, appState);
                   },
-                  icon: Icon(
-                    _isDbTableViewExpanded
-                        ? Icons.fullscreen_exit_rounded
-                        : Icons.fullscreen_rounded,
-                  ),
+                  icon: const Icon(Icons.fullscreen_rounded),
                 ),
               ],
             ),
@@ -1911,6 +1900,232 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     );
   }
 
+  void _showFullscreenTableView(BuildContext context, DecryptorController appState) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog.fullscreen(
+        child: _FullscreenTableModal(
+          appState: appState,
+          columns: appState.filteredDbColumns,
+          rows: appState.filteredDbRows,
+          tableName: appState.selectedDbTable ?? 'Query Result',
+        ),
+      ),
+    );
+  }
+
+}
+
+
+class _FullscreenTableModal extends StatefulWidget {
+  final DecryptorController appState;
+  final List<String> columns;
+  final List<List<String>> rows;
+  final String tableName;
+
+  const _FullscreenTableModal({
+    required this.appState,
+    required this.columns,
+    required this.rows,
+    required this.tableName,
+  });
+
+  @override
+  State<_FullscreenTableModal> createState() => _FullscreenTableModalState();
+}
+
+class _FullscreenTableModalState extends State<_FullscreenTableModal> {
+  late ScrollController _horizontalScrollController;
+  late ScrollController _verticalScrollController;
+  late TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _horizontalScrollController = ScrollController();
+    _verticalScrollController = ScrollController();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    _verticalScrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final columns = widget.columns;
+    final rows = widget.rows;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.tableName} (${rows.length} rows)'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Copy to clipboard',
+            icon: const Icon(Icons.copy, size: 18),
+            onPressed: () => _copyTableToClipboard(context),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<String>(
+            tooltip: 'Export table',
+            icon: const Icon(Icons.download, size: 18),
+            onSelected: (format) => widget.appState.exportDbResults(
+              columns: columns,
+              rows: rows,
+              tableName: widget.tableName,
+              format: format,
+            ),
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'csv', child: Text('Export as CSV')),
+              PopupMenuItem(value: 'json', child: Text('Export as JSON')),
+              PopupMenuItem(value: 'sql', child: Text('Export as SQL INSERTs')),
+            ],
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Filter rows or columns',
+                hintText: 'Search...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
+                      ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _buildFullscreenTable(
+                context,
+                colorScheme,
+                columns,
+                rows,
+                _searchController.text,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullscreenTable(
+    BuildContext context,
+    ColorScheme colorScheme,
+    List<String> columns,
+    List<List<String>> rows,
+    String searchQuery,
+  ) {
+    final searchLower = searchQuery.toLowerCase();
+    final filteredRows = rows.where((row) {
+      if (searchQuery.isEmpty) return true;
+      return row.any((cell) => cell.toLowerCase().contains(searchLower)) ||
+          columns.any((col) => col.toLowerCase().contains(searchLower));
+    }).toList();
+
+    if (columns.isEmpty) {
+      return Center(
+        child: Text(
+          'No columns to display',
+          style: TextStyle(color: colorScheme.outline),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Scrollbar(
+          controller: _horizontalScrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          child: SingleChildScrollView(
+            controller: _horizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            child: Scrollbar(
+              controller: _verticalScrollController,
+              thumbVisibility: true,
+              trackVisibility: true,
+              child: SingleChildScrollView(
+                controller: _verticalScrollController,
+                child: DataTable(
+                  columns: columns
+                      .map((column) => DataColumn(label: Text(column)))
+                      .toList(),
+                  rows: filteredRows
+                      .map(
+                        (row) => DataRow(
+                          cells: row
+                              .map(
+                                (value) => DataCell(
+                                  SelectableText(
+                                    value,
+                                    minLines: 1,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _copyTableToClipboard(BuildContext context) {
+    final columns = widget.columns;
+    final rows = widget.rows;
+
+    final csv = [
+      columns.join(','),
+      ...rows.map((row) => row.join(',')),
+    ].join('\n');
+
+    Clipboard.setData(ClipboardData(text: csv)).then((_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Table copied to clipboard'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+  }
 }
 
 
