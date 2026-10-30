@@ -61,21 +61,25 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
     super.dispose();
   }
 
-  Future<void> _handleDroppedFiles(List<DropItem> files) async {
-    if (files.isEmpty) return;
+  Future<void> _handleDroppedFiles(DropDoneDetails details) async {
+    if (details.files.isEmpty) return;
 
     final appState = Get.find<DecryptorController>();
-    final first = files.first;
-    final path = first.path;
+    
+    for (final xFile in details.files) {
+      final path = xFile.path;
+      
+      if (path.isEmpty) continue;
 
-    if (FileService.isDatabaseFile(path)) {
-      setState(() => _selectedMode = _ToolMode.databaseViewer);
-      await appState.openFileByPath(path, isDb: true);
-    } else {
-      setState(() => _selectedMode = _ToolMode.decryptor);
-      await appState.openFileByPath(path, isDb: false);
+      if (FileService.isDatabaseFile(path)) {
+        setState(() => _selectedMode = _ToolMode.databaseViewer);
+        await appState.openFileByPath(path, isDb: true);
+      } else {
+        setState(() => _selectedMode = _ToolMode.decryptor);
+        await appState.openFileByPath(path, isDb: false);
+      }
     }
-
+    setState(() => _isDraggingOver = false);
   }
 
   @override
@@ -88,11 +92,14 @@ class _DecryptorScreenState extends State<DecryptorScreen> {
         child: TitleBar(),
       ),
       body: DropTarget(
-        onDragEntered: (_) => setState(() => _isDraggingOver = true),
-        onDragExited: (_) => setState(() => _isDraggingOver = false),
-        onDragDone: (detail) {
+        onDragEntered: (_) {
+          setState(() => _isDraggingOver = true);
+        },
+        onDragExited: (_) {
           setState(() => _isDraggingOver = false);
-          _handleDroppedFiles(detail.files);
+        },
+        onDragDone: (DropDoneDetails details) {
+          _handleDroppedFiles(details);
         },
         child: Stack(
           children: [

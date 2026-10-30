@@ -12,9 +12,14 @@ class FileService {
         dialogTitle: 'Select Encrypted Log File',
       );
 
-      if (result != null && result.files.single.path != null) {
-        return File(result.files.single.path!);
+      // FilePicker.pickFiles returns List<PlatformFile> directly in v13+
+      if (result.isNotEmpty) {
+        final item = result.first;
+        if (item.path != null) {
+          return File(item.path!);
+        }
       }
+      
       return null;
     } catch (e) {
       throw Exception('Error picking file: $e');
@@ -28,14 +33,17 @@ class FileService {
         type: FileType.custom,
         allowedExtensions: ['txt'],
         dialogTitle: 'Select Encrypted Log Files',
-        allowMultiple: true,
       );
 
-      if (result == null) return [];
-      return result.files
-          .where((f) => f.path != null)
-          .map((f) => File(f.path!))
-          .toList();
+      final files = <File>[];
+      
+      for (final item in result) {
+        if (item.path != null) {
+          files.add(File(item.path!));
+        }
+      }
+      
+      return files;
     } catch (e) {
       throw Exception('Error picking files: $e');
     }
@@ -79,9 +87,13 @@ class FileService {
         dialogTitle: 'Select SQLite Database File',
       );
 
-      if (result != null && result.files.single.path != null) {
-        return File(result.files.single.path!);
+      if (result.isNotEmpty) {
+        final item = result.first;
+        if (item.path != null) {
+          return File(item.path!);
+        }
       }
+      
       return null;
     } catch (e) {
       throw Exception('Error picking database file: $e');
@@ -97,9 +109,13 @@ class FileService {
         dialogTitle: 'Select RSA Private Key File',
       );
 
-      if (result != null && result.files.single.path != null) {
-        return File(result.files.single.path!);
+      if (result.isNotEmpty) {
+        final item = result.first;
+        if (item.path != null) {
+          return File(item.path!);
+        }
       }
+      
       return null;
     } catch (e) {
       throw Exception('Error picking private key file: $e');
@@ -141,22 +157,30 @@ class FileService {
     required String defaultExtension,
   }) async {
     try {
-      final filePath = await FilePicker.saveFile(
-        dialogTitle: dialogTitle,
+      // Convert string to Uint8List
+      final bytes = Uint8List.fromList(content.codeUnits);
+      
+      final result = await FilePicker.saveFile(
         fileName: suggestedFileName,
-        type: FileType.custom,
-        allowedExtensions: allowedExtensions,
+        bytes: bytes,
+        dialogTitle: dialogTitle,
+        mimeType: 'text/plain',
       );
 
-      if (filePath == null || filePath.isEmpty) {
+      if (result == null) {
+        return null;
+      }
+
+      // result is a Uri, convert to string path
+      final filePath = result.toFilePath();
+      
+      if (filePath.isEmpty) {
         return null;
       }
 
       final normalizedPath = filePath.toLowerCase().endsWith('.$defaultExtension')
           ? filePath
           : '$filePath.$defaultExtension';
-      final file = File(normalizedPath);
-      await file.writeAsString(content);
 
       return normalizedPath;
     } catch (e) {

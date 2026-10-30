@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:csv/csv.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 class DatabaseTableData {
@@ -44,7 +43,7 @@ class DatabaseService {
       ''');
       return result.map((row) => row['name'] as String).toList();
     } finally {
-      db.dispose();
+      db.close();
     }
   }
 
@@ -72,7 +71,7 @@ class DatabaseService {
 
       return DatabaseTableData(columns: columns, rows: rows);
     } finally {
-      db.dispose();
+      db.close();
     }
   }
 
@@ -106,7 +105,7 @@ class DatabaseService {
           .toList();
       return QueryResult(columns: columns, rows: rows);
     } finally {
-      db.dispose();
+      db.close();
     }
   }
 
@@ -158,16 +157,27 @@ class DatabaseService {
 
       return TableSchema(ddl: ddl, indexes: indexes, foreignKeys: foreignKeys);
     } finally {
-      db.dispose();
+      db.close();
     }
   }
 
   static String exportToCsv(List<String> columns, List<List<String>> rows) {
-    final list = <List<String>>[
-      columns,
-      ...rows,
-    ];
-    return const ListToCsvConverter().convert(list);
+    // Manually build CSV: escape quotes and handle commas
+    String escapeField(String field) {
+      if (field.contains(',') || field.contains('"') || field.contains('\n')) {
+        return '"${field.replaceAll('"', '""')}"';
+      }
+      return field;
+    }
+
+    final csvLines = <String>[];
+    // Add headers
+    csvLines.add(columns.map(escapeField).join(','));
+    // Add rows
+    for (final row in rows) {
+      csvLines.add(row.map(escapeField).join(','));
+    }
+    return csvLines.join('\n');
   }
 
   static String exportToJson(List<String> columns, List<List<String>> rows) {
